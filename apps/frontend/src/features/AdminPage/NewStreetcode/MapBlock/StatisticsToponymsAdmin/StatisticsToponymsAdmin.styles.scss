@@ -1,0 +1,27 @@
+@use "@sass/mixins/_utils.mixins.scss" as mut;
+@use "@sass/variables/_variables.fonts.scss" as ft;
+@use "@sass/variables/_variables.colors.scss" as c;
+@use "@sass/_utils.functions.scss" as f;
+
+.ToponymsTableWrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: hidden;
+
+    .ant-btn-primary:disabled {
+        background-color: c.$lighter-gray-color;
+        color: c.$pure-white-color;
+      }
+      .ant-btn-default {
+        border-color: c.$accented-red-color;
+    }   
+}
+
+
+.paginationButton > li {
+    border-color: c.$accented-red-color;
+    a {
+        color: c.$accented-red-color;
+    }
+}

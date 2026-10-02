@@ -1,0 +1,99 @@
+@use '@assets/sass/_utils.functions.scss' as *;
+@use '@assets/sass/mixins/_utils.mixins.scss' as mut;
+@use '@assets/sass/variables/_variables.colors.scss' as c;
+
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+
+@mixin slick-arrow-pseudo($direction, $margin) {
+    transition: .5s;
+    margin-left: pxToRem($margin);
+    @include mut.sized(40px, 58px);
+
+    $path: "@assets/images/utils/#{$direction}DefaultSliderArrow.svg";
+    content: url($path);
+}
+
+.slick-next,
+.slick-prev {
+    pointer-events: none;
+
+    &:hover:before {
+        filter: brightness(50%);
+    }
+
+    &:before {
+        pointer-events: all;
+    }
+}
+
+.slick-prev:before {
+    @include slick-arrow-pseudo(Left, -17px);
+}
+
+.slick-next:before {
+    @include slick-arrow-pseudo(Right, -5px);
+}
+
+.slick-dots li button:before {
+    content: '';
+    @include mut.sized(12px, 12px);
+    background: c.$slider-base-dot-color;
+    transition: .5s;
+}
+
+.slick-disabled {
+    filter: c.$base-arrow-filter-color;
+
+    &:before {
+        pointer-events: none;
+    }
+}
+
+li.slick-active button:before {
+    background: c.$dark-red-color;
+}
+
+.sliderClass {
+    width: 100%;
+
+    .slider-item-container {
+        display: flex !important;
+        position: relative;
+        flex-direction: row;
+
+        .left {
+            position: absolute;
+            width: 35%;
+            height: 100%;
+            left: 0;
+            opacity: 0;
+        }
+
+        .right {
+            position: absolute;
+            width: 35%;
+            height: 100%;
+            right: 0;
+            opacity: 0;
+        }
+    }
+}
+
+.nonInfiniteSlider {
+    .slick-arrow {
+        opacity: .25;
+        filter: c.$selected-arrow-filter-color;
+
+        &:hover {
+            opacity: .25;
+        }
+    }
+}
+
+@media screen and (max-width:1024px) {
+    .slick-next,
+    .slick-prev {
+        visibility: hidden;
+    }
+}

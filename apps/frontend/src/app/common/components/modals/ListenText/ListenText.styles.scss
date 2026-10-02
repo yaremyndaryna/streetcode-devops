@@ -1,0 +1,70 @@
+@use "@assets/sass/_utils.functions.scss" as f;
+@use "@assets/sass/variables/_variables.fonts.scss" as ft;
+@use "@assets/sass/variables/_variables.colors.scss" as c;
+@use "@assets/sass/mixins/_utils.mixins.scss" as mut;
+@use "@assets/sass/mixins/_vendor.mixins.scss" as vnd;
+
+.modal {
+    @include mut.sized(1200px, 46px);
+    @include mut.flex-centered();
+
+    @include mut.positioned-as(fixed, $bottom: 4%);
+    @include mut.full-rounded(11px, $overflow: visible);
+
+    background-color: c.$pure-white-color;
+    border: 2px solid #DB3424;
+
+    z-index: 1000;
+    @include vnd.vendored(filter, 'drop-shadow(0 2px 15px rgba(163, 163, 163, 0.25))');
+}
+
+.fadeInAnimation {
+    animation: fadeIn .5s;
+}
+.fadeOutAnimation {
+    animation: fadeOut .5s;
+}
+
+@include mut.fadeKeyframes("fadeIn", "fadeIn") {
+    from { opacity: 0 }
+    to { opacity: 100% }
+}
+
+@include mut.fadeKeyframes("fadeOut", "fadeOut") {
+    from { opacity: 100% }
+    to { opacity: 0 }
+}
+
+.closeModal {
+    @include mut.positioned-as($position: absolute, $top: -20px, $right: -24px);
+    cursor: pointer;
+}
+@media screen and (max-width: 1200px) {
+    .modal{
+        @include mut.sized(95%, 46px);
+
+      .audioPlayer {
+        @include mut.sizedImportant(100%, 30px);
+        @include mut.rem-padded(0px, 25px,0, 25px);
+        .progressBarWrapper{
+          width: 100%;
+        }
+        .progressBar{
+          width: 100%;
+        }
+        .buttonContainer {
+            @include mut.flex-centered();
+            margin-right: f.pxToRem(10px);
+          }
+      }
+    }
+  
+}
+@media screen and (max-width: 1024px){
+    .closeModal{
+        display:none;
+    }
+    .buttonContainer {
+        margin-right: f.pxToRem(5px);
+      }
+}

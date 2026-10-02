@@ -1,0 +1,19 @@
+@use "@sass/mixins/_utils.mixins.scss" as ut;
+@use "@sass/variables/_variables.fonts.scss" as ft;
+@use "@sass/variables/_variables.colors.scss" as c;
+@use "@sass/_utils.functions.scss" as f;
+
+.data-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tagInput-counter {
+    position: absolute;
+    right: f.pxToRem(2px);
+    bottom: f.pxToRem(2px);
+    font-size: 17px;
+    font-weight: light;
+    color: rgba(154, 154, 154, 255);
+}
