@@ -1,0 +1,19 @@
+---
+- name: Ensure target user has passwordless sudo access
+  copy:
+    dest: "/etc/sudoers.d/ansible_nopasswd"
+    content: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
+- name: Update apt cache and install base dependencies
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - git
+      - lsb-release
+    state: present
+    update_cache: yes

@@ -1,0 +1,8 @@
+---
+- name: Deploy Streetcode WebApp via Docker using Ansible
+  hosts: webservers
+  become: yes
+  roles:
+    - common
+    - docker
+    - streetcode_app

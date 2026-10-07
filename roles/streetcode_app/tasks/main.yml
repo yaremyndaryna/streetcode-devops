@@ -1,0 +1,37 @@
+---
+- name: Clone repository from docker branch via HTTPS
+  git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_dir }}"
+    version: "{{ app_branch }}"
+    force: yes
+
+- name: Create .env file for Docker Compose
+  copy:
+    dest: "{{ app_dir }}/.env"
+    content: |
+      MS_SQL_DB_PORT={{ db_port }}
+      SA_PASSWORD={{ db_password }}
+      DB_USER={{ db_user }}
+      DB_NAME={{ db_name }}
+
+- name: Tear down existing Docker containers
+  command: docker compose down --remove-orphans
+  args:
+    chdir: "{{ app_dir }}"
+  failed_when: false
+
+- name: Build and start Docker containers
+  command: docker compose up --build -d
+  args:
+    chdir: "{{ app_dir }}"
+
+- name: Verify running containers
+  command: docker compose ps
+  args:
+    chdir: "{{ app_dir }}"
+  register: compose_ps_output
+
+- name: Display running containers output
+  debug:
+    var: compose_ps_output.stdout_lines

@@ -1,0 +1,9 @@
+app_repo: "https://github.com/yaremyndaryna/streetcode-devops.git"
+app_branch: "docker"
+
+app_dir: "/home/{{ ansible_user }}/streetcode-app"
+
+db_port: 1433
+db_password: "Admin@1234"
+db_user: "sa"
+db_name: "StreetcodeDb"
