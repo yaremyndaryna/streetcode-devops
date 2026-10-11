@@ -24,22 +24,22 @@ pipeline {
 
         stage('Run Backend Unit Tests') {
             steps {
-                echo 'Running .NET Unit Tests...'
-                sh 'docker run --rm -v $(pwd):/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release'
+                echo 'Checking project structure and running tests...'
+                sh "docker run --rm -v ${WORKSPACE}:/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 sh -c \"echo '=== Checking workspace contents ===' && ls -la apps/backend/Streetcode/Streetcode.XUnitTest/ && echo '=== Running dotnet test ===' && dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release\""
             }
         }
 
         stage('Run Frontend Tests') {
             steps {
                 echo 'Running Frontend tests inside Node.js container...'
-                sh 'docker run --rm -v $(pwd):/app -w /app/apps/frontend node:18 npm test -- --watchAll=false --passWithNoTests'
+                sh "docker run --rm -v ${WORKSPACE}:/app -w /app/apps/frontend node:18 npm test -- --watchAll=false --passWithNoTests"
             }
         }
 
         stage('Deploy via Ansible') {
             steps {
                 echo "Deploying Streetcode application for target user: ${params.TARGET_USER}"
-                sh "ansible-playbook site.yml -e 'target_user=${params.TARGET_USER}'"
+                sh "ansible-playbook -i inventory site.yml -e 'target_user=${params.TARGET_USER}'"
             }
         }
     }
