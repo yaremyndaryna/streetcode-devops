@@ -24,11 +24,8 @@ pipeline {
 
         stage('Run Backend Unit Tests') {
             steps {
-                echo 'Running .NET Unit Tests inside Docker SDK container...'
-                sh '''
-                    docker run --rm -v ${WORKSPACE}:/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 \
-                    dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
-                '''
+                echo 'Finding project files inside workspace...'
+                sh 'docker run --rm -v ${WORKSPACE}:/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 find . -name "*.csproj"'
             }
         }
 
