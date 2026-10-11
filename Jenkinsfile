@@ -14,10 +14,6 @@ pipeline {
         )
     }
 
-    environment {
-        DEPLOY_USER = "${params.TARGET_USER}"
-    }
-
     stages {
         stage('Checkout Code') {
             steps {
@@ -26,27 +22,25 @@ pipeline {
             }
         }
 
-        stage('Run Backend Tests') {
+        stage('Run All Backend Tests') {
             steps {
-                echo 'Running all .NET tests via solution file...'
-                sh 'dotnet test apps/backend/Streetcode/Streetcode.sln --configuration Release'
+                echo 'Running .NET tests inside Docker SDK container...'
+                sh 'docker run --rm -v $(pwd):/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 dotnet test apps/backend/Streetcode/Streetcode.sln --configuration Release'
             }
         }
 
         stage('Run Frontend Tests') {
             steps {
-                echo 'Running Frontend Tests...'
-                dir('apps/frontend') {
-                    sh 'npm test -- --watchAll=false --passWithNoTests'
-                }
+                echo 'Running Frontend tests inside Node.js container...'
+                sh 'docker run --rm -v $(pwd):/app -w /app/apps/frontend node:18 npm test -- --watchAll=false --passWithNoTests'
             }
         }
 
         stage('Deploy via Ansible') {
             steps {
-                echo "Deploying Streetcode application for target user: ${env.DEPLOY_USER}"
-                
-                sh "ansible-playbook site.yml -e 'target_user=${env.DEPLOY_USER}'"
+                echo "Deploying Streetcode application for target user: ${params.TARGET_USER}"
+                // Передаємо інвентар -i inventory та використовуємо params.TARGET_USER напряму
+                sh "ansible-playbook -i inventory site.yml -e 'target_user=${params.TARGET_USER}'"
             }
         }
     }
