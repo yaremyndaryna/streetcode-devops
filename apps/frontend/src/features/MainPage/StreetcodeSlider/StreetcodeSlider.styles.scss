@@ -1,0 +1,65 @@
+@use "@sass/mixins/_utils.mixins.scss" as mut;
+@use "@sass/_utils.functions.scss" as f;
+@use "@sass/variables/_variables.colors.scss" as c;
+
+$bgImg: '@assets/images/streetcode-card/background.png';
+
+.streetcodeMainPageWrapper {
+    .streetcodeSliderComponent {
+        .streetcodeContainer {
+            background-repeat: repeat-x;
+            height: 500px;
+        }
+
+        .streetcodeSliderContentBlock,
+        .blockCenter {
+            @include mut.flex-centered();
+        }
+
+        .streetcodeSliderContainer {
+            width: 100%;
+            position: relative;
+        }
+
+        .streetcodeSliderContent {
+            width: 100%;
+            @include mut.flex-centered();
+            margin-top: f.pxToRem(20px);
+            padding-top: f.pxToRem(10px);
+
+            ::-webkit-scrollbar {
+                width: f.pxToRem(5px);
+            }
+        }
+
+        .slick-slide {
+            width: unset !important;
+            
+            @media screen and (max-width: 767px) {
+                    width: 100% !important;
+            }
+        }
+
+        .slick-initialized .slick-slide {
+            @include mut.flexed(row, center, center, wrap);
+            @include mut.rem-margined($top: 0px, $right: 20px, $bottom: 10px, $left: 0px);
+        }
+
+        .slick-track {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .slick-initialized .slick-slide {
+            @include mut.flexed($justify-content: center, $gap: 0px);
+            @include mut.rem-margined($top: 20px, $right: 0px, $bottom: 10px, $left: 0px);
+        }
+
+        .slick-center {
+            transform: scale(1.16);
+            padding-left: f.pxToRem(16px);
+            padding-right: f.pxToRem(16px);
+            padding-bottom: f.pxToRem(20px);
+        }
+    }
+}

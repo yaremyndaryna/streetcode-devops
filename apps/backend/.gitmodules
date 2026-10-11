@@ -1,0 +1,4 @@
+[submodule "Streetcode/StreetCode.Client"]
+	path = Streetcode/StreetCode.Client
+	url = ''
+	branch = main

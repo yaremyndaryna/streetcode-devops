@@ -1,8 +1,9 @@
 ---
-- name: Deploy Streetcode WebApp via Docker using Ansible
+- name: Deploy Streetcode WebApp & Jenkins CI/CD
   hosts: webservers
   become: yes
   roles:
     - common
     - docker
     - streetcode_app
+    - jenkins

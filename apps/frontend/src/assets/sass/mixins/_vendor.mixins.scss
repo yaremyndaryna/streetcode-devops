@@ -1,0 +1,85 @@
+@use "@assets/sass/_utils.functions.scss" as f;
+
+/// Vendor prefixes.
+/// @var {list}
+$vendor-prefixes: (
+        '-moz-',
+        '-webkit-',
+        '-ms-',
+        ''
+);
+
+/// Properties that should be vendorized.
+/// @var {list}
+$vendor-properties: (
+        'align-content',
+        'align-items',
+        'align-self',
+        'animation',
+        'appearance',
+        'box-sizing',
+        'filter',
+        'flex',
+        'flex-basis',
+        'flex-direction',
+        'flex-flow',
+        'flex-grow',
+        'flex-shrink',
+        'flex-wrap',
+        'justify-content',
+        'order',
+        'pointer-events',
+        'transform',
+        'transition',
+        'transition-delay'
+);
+
+/// Values that should be vendorized.
+/// @var {list}
+$vendor-values: (
+        'flex',
+        'linear-gradient',
+        'radial-gradient',
+        'transform'
+);
+
+/// Vendorizes a declaration's property and/or value(s).
+/// @param {string} $property Property.
+/// @param {mixed} $value String/list of value(s).
+@mixin vendored($property, $value) {
+
+  // Determine if property should expand.
+  $expandProperty: index($vendor-properties, $property);
+
+  // Determine if value should expand (and if so, add '-prefix-' placeholder).
+  $expandValue: false;
+
+  @each $x in $value {
+    @each $y in $vendor-values {
+      @if $y == str-slice($x, 1, str-length($y)) {
+
+        $value: set-nth($value, index($value, $x), '-prefix-' + $x);
+        $expandValue: true;
+      }
+    }
+  }
+
+  // Expand property?
+  @if $expandProperty {
+    @each $vendor in $vendor-prefixes {
+      #{$vendor}#{$property}: #{f.str-replace-all($value, '-prefix-', $vendor)};
+    }
+  }
+
+    // Expand just the value?
+  @else if $expandValue {
+    @each $vendor in $vendor-prefixes {
+      #{$property}: #{f.str-replace-all($value, '-prefix-', $vendor)};
+    }
+  }
+
+    // Neither? Treat them as a normal declaration.
+  @else {
+    #{$property}: #{$value};
+  }
+}

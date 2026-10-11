@@ -1,0 +1,21 @@
+---
+- name: Ensure Jenkins directory exists
+  file:
+    path: "/home/{{ target_user }}/jenkins"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+
+- name: Deploy docker-compose.yml for Jenkins
+  template:
+    src: docker-compose.jenkins.yml.j2
+    dest: "/home/{{ target_user }}/jenkins/docker-compose.yml"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+
+- name: Start Jenkins container via Docker Compose CLI
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "/home/{{ target_user }}/jenkins"

@@ -1,0 +1,119 @@
+@use "@sass/mixins/_utils.mixins.scss" as mut;
+@use "@sass/mixins/_wrapper.mixins.scss" as wr;
+@use "@sass/_utils.functions.scss" as f;
+@use "@sass/variables/_variables.colors.scss" as c;
+
+$moreInfo-width: 150px;
+
+.relatedFiguresWrapper.container{
+    margin-top: f.pxToRem(120px);
+}
+
+.smallWrapper {
+    .slick-track {
+        @include mut.rem-margined();
+
+        .slick-cloned {
+            display: none;
+        }
+    }
+}
+
+.relatedFiguresContainer {
+    @include mut.sized($width: 100%, $height: 100%);
+}
+
+.headingWrapper {
+    position: relative;
+}
+
+.moreInfo {
+    position: absolute;
+    right: 0;
+    top: -90px;
+
+    width: $moreInfo-width;
+    p {
+        @include mut.with-font($font-weight: 500, $font-size: 20px);
+        line-height: f.pxToEm(25px);
+        text-decoration-line: none;
+        color: c.$dark-red-color;
+        width: inherit;
+
+        cursor: pointer;
+
+        &:hover {
+            text-decoration-line: underline;
+
+            filter: contrast(150%);
+        }
+    }
+}
+
+.relatedFiguresSliderContainer {
+    position: relative;
+
+    @include mut.sized($width: 1216px, $height: 450px);
+    margin: 0 auto;
+
+    .slick-arrow {
+        top: 45%;
+    }
+
+    .slick-list {
+        @include mut.rem-padded($bottom: 4px);
+    }
+
+    .slick-track {
+        @include mut.flexed($justify-content: center, $align-items: flex-start, $gap: 28px);
+    }
+}
+
+@media screen and (max-width: 481px) {
+    .relatedFiguresWrapper {
+        .slick-dots {
+            bottom: f.pxToRem(-30px);
+            left: f.pxToRem(7px);
+        }
+        .slick-track {
+            @include mut.flexed($align-items: flex-start, $gap: 10px);
+        }
+        .slick-slide {
+            width: 165px !important;
+            
+            &.slick-active.slick-current {
+                transform: translateX(0px) !important;
+            }
+        }
+        
+    }
+}
+
+@media screen and (max-width: 767px) and (min-width: 481px) {
+    .relatedFiguresWrapper {
+        @include mut.sized($height: 400px);
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .relatedFiguresWrapper.container{
+        margin-top: f.pxToRem(60px);
+    }
+
+    .relatedFiguresSliderContainer {
+        width: 100vw !important;
+
+        .slick-track {
+            @include mut.flexed($align-items: flex-start, $gap: 10px);
+            @include mut.rem-margined($left: 10px);
+        }
+        .slick-arrow {
+            display: none;
+            visibility: hidden;
+        }
+    }
+
+    .moreInfo {
+        display: none;
+    }
+}

@@ -1,0 +1,13 @@
+@use "@sass/_utils.functions.scss" as f;
+@use "@sass/variables/_variables.colors.scss" as c;
+@use "@sass/mixins/_utils.mixins.scss" as mut;
+
+.burgerMenuContainer {
+  @include mut.sized(36px, 28px);
+  @include mut.flexed($direction: column, $justify-content: center, $gap: 6px);
+  @include mut.rem-margined($right: 20px);
+
+  &:hover {
+    cursor: pointer;
+  }
+}
