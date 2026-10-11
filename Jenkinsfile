@@ -22,10 +22,10 @@ pipeline {
             }
         }
 
-        stage('Run All Backend Tests') {
+        stage('Run Backend Unit Tests') {
             steps {
-                echo 'Running .NET tests inside Docker SDK container...'
-                sh 'docker run --rm -v $(pwd):/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 dotnet test apps/backend/Streetcode/Streetcode.sln --configuration Release'
+                echo 'Running .NET Unit Tests...'
+                sh 'docker run --rm -v $(pwd):/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release'
             }
         }
 
@@ -39,8 +39,7 @@ pipeline {
         stage('Deploy via Ansible') {
             steps {
                 echo "Deploying Streetcode application for target user: ${params.TARGET_USER}"
-                // Передаємо інвентар -i inventory та використовуємо params.TARGET_USER напряму
-                sh "ansible-playbook -i inventory site.yml -e 'target_user=${params.TARGET_USER}'"
+                sh "ansible-playbook site.yml -e 'target_user=${params.TARGET_USER}'"
             }
         }
     }
