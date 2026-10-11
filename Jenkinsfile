@@ -1,15 +1,20 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout(true)   // прибирає дубльований checkout
+        timestamps()
+    }
+
     parameters {
         string(
-            name: 'TARGET_USER', 
-            defaultValue: 'ubuntu', 
+            name: 'TARGET_USER',
+            defaultValue: 'ubuntu',
             description: 'Target system username for Ansible deployment'
         )
         string(
-            name: 'BRANCH_NAME', 
-            defaultValue: 'jenkins', 
+            name: 'BRANCH_NAME',
+            defaultValue: 'jenkins',
             description: 'Git branch to deploy'
         )
     }
@@ -17,15 +22,48 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: "${params.BRANCH_NAME}", 
-                    url: 'https://github.com/yaremyndaryna/streetcode-devops.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${params.BRANCH_NAME}"]],
+                    userRemoteConfigs: [[url: 'https://github.com/yaremyndaryna/streetcode-devops.git']],
+                    extensions: [
+                        [$class: 'SubmoduleOption', recursiveSubmodules: true, parentCredentials: true],
+                        [$class: 'CleanBeforeCheckout']
+                    ]
+                ])
+            }
+        }
+
+        stage('Debug Workspace') {
+            steps {
+                echo 'Що є у workspace (Jenkins) та що бачить Docker:'
+                sh '''
+                    ls -la ${WORKSPACE}
+                    echo "--- apps ---"
+                    ls -la ${WORKSPACE}/apps || true
+                    echo "--- .gitmodules ---"
+                    cat ${WORKSPACE}/.gitmodules || echo "no .gitmodules"
+                    echo "--- Docker mount check ---"
+                    docker run --rm -v ${WORKSPACE}:/app alpine ls -la /app/apps || true
+                '''
             }
         }
 
         stage('Run Backend Unit Tests') {
             steps {
-                echo 'Finding project files inside workspace...'
-                sh 'docker run --rm -v ${WORKSPACE}:/app -w /app mcr.microsoft.com/dotnet/sdk:8.0 find . -name "*.csproj"'
+                echo 'Running backend tests inside .NET container...'
+                sh '''
+                    docker run --rm -v ${WORKSPACE}:/app -w /app \
+                    mcr.microsoft.com/dotnet/sdk:8.0 sh -c '
+                        SLN=$(find . -name "*.sln" | head -n 1)
+                        if [ -z "$SLN" ]; then
+                            echo "ERROR: .sln file not found"
+                            exit 1
+                        fi
+                        echo "Using solution: $SLN"
+                        dotnet test "$SLN"
+                    '
+                '''
             }
         }
 
@@ -33,8 +71,19 @@ pipeline {
             steps {
                 echo 'Running Frontend tests inside Node.js container...'
                 sh '''
-                    docker run --rm -v ${WORKSPACE}:/app -w /app/apps/frontend node:18 \
-                    npm test -- --watchAll=false --passWithNoTests
+                    docker run --rm -v ${WORKSPACE}:/app -w /app node:18 sh -c '
+                        PKG=$(find . -name package.json -not -path "*/node_modules/*" \
+                              \\( -ipath "*front*" -o -ipath "*client*" \\) | head -n 1)
+                        if [ -z "$PKG" ]; then
+                            echo "ERROR: frontend package.json not found"
+                            exit 1
+                        fi
+                        DIR=$(dirname "$PKG")
+                        echo "Using frontend dir: $DIR"
+                        cd "$DIR"
+                        npm ci
+                        npm test -- --watchAll=false --passWithNoTests
+                    '
                 '''
             }
         }
