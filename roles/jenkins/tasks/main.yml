@@ -1,21 +1,47 @@
 ---
-- name: Ensure Jenkins directory exists
+- name: Ensure ~/.ssh exists
   file:
-    path: "/home/{{ target_user }}/jenkins"
+    path: "/home/{{ target_user }}/.ssh"
     state: directory
-    owner: "{{ target_user }}"
-    group: "{{ target_user }}"
-    mode: '0755'
+    mode: '0700'
+  become: false
 
-- name: Deploy docker-compose.yml for Jenkins
+- name: Generate SSH key for Jenkins deployment
+  community.crypto.openssh_keypair:
+    path: "/home/{{ target_user }}/.ssh/jenkins_deploy"
+    type: ed25519
+    comment: jenkins-deploy
+  become: false
+
+- name: Authorize SSH key for deploy user
+  ansible.posix.authorized_key:
+    user: "{{ target_user }}"
+    key: "{{ lookup('file', '/home/' ~ target_user ~ '/.ssh/jenkins_deploy.pub') }}"
+  become: false
+
+- name: Create Jenkins directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0777'
+  loop:
+    - "{{ jenkins_dir }}"
+    - "{{ jenkins_home }}"
+
+- name: Copy Jenkins files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ jenkins_dir }}/{{ item }}"
+    mode: '0644'
+  loop: [Dockerfile, plugins.txt, jenkins.yaml]
+
+- name: Render docker-compose for Jenkins
   template:
     src: docker-compose.jenkins.yml.j2
-    dest: "/home/{{ target_user }}/jenkins/docker-compose.yml"
-    owner: "{{ target_user }}"
-    group: "{{ target_user }}"
-    mode: '0644'
+    dest: "{{ jenkins_dir }}/docker-compose.yml"
+    mode: '0600'
 
-- name: Start Jenkins container via Docker Compose CLI
-  ansible.builtin.command:
-    cmd: docker compose up -d
-    chdir: "/home/{{ target_user }}/jenkins"
+- name: Build and start Jenkins
+  command: docker compose up -d --build
+  args:
+    chdir: "{{ jenkins_dir }}"

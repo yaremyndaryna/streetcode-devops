@@ -1,0 +1,2 @@
+jenkins_dir: /opt/jenkins-ci
+jenkins_home: /var/jenkins_home

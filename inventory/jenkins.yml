@@ -1,0 +1,7 @@
+all:
+  children:
+    webservers:
+      hosts:
+        streetcode_vm:
+          ansible_host: host.docker.internal
+          ansible_user: "{{ target_user }}"

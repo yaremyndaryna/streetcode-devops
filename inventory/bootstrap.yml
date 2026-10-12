@@ -1,0 +1,6 @@
+all:
+  children:
+    webservers:
+      hosts:
+        streetcode_vm:
+          ansible_connection: local

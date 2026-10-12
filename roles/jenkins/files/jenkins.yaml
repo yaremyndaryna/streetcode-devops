@@ -1,0 +1,41 @@
+jenkins:
+  systemMessage: "Streetcode CI/CD (Configured as Code)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: ${JENKINS_ADMIN_PASSWORD}
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: deploy-ssh
+              username: ${DEPLOY_USER}
+              description: "SSH Key for Ansible Host Deployment"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${readFile:/run/secrets/deploy_ssh_key}"
+
+jobs:
+  - script: |
+      pipelineJob('streetcode-pipeline') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${REPO_URL}') }
+                branches('*/${REPO_BRANCH}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }

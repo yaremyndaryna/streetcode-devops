@@ -1,107 +1,82 @@
 pipeline {
     agent any
 
-    options {
-        skipDefaultCheckout(true)   // прибирає дубльований checkout
-        timestamps()
-    }
-
     parameters {
         string(
-            name: 'TARGET_USER',
-            defaultValue: 'ubuntu',
+            name: 'TARGET_USER', 
+            defaultValue: "${env.DEPLOY_USER ?: 'ubuntu'}", 
             description: 'Target system username for Ansible deployment'
         )
-        string(
-            name: 'BRANCH_NAME',
-            defaultValue: 'jenkins',
-            description: 'Git branch to deploy'
-        )
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        DEPLOY_TARGET_USER = "${params.TARGET_USER}"
+        NODE_IMAGE         = 'node:18'
+        DOTNET_IMAGE       = 'mcr.microsoft.com/dotnet/sdk:8.0'
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${params.BRANCH_NAME}"]],
-                    userRemoteConfigs: [[url: 'https://github.com/yaremyndaryna/streetcode-devops.git']],
-                    extensions: [
-                        [$class: 'SubmoduleOption', recursiveSubmodules: true, parentCredentials: true],
-                        [$class: 'CleanBeforeCheckout']
-                    ]
-                ])
-            }
-        }
-
-        stage('Debug Workspace') {
-            steps {
-                echo 'Що є у workspace (Jenkins) та що бачить Docker:'
-                sh '''
-                    ls -la ${WORKSPACE}
-                    echo "--- apps ---"
-                    ls -la ${WORKSPACE}/apps || true
-                    echo "--- .gitmodules ---"
-                    cat ${WORKSPACE}/.gitmodules || echo "no .gitmodules"
-                    echo "--- Docker mount check ---"
-                    docker run --rm -v ${WORKSPACE}:/app alpine ls -la /app/apps || true
-                '''
-            }
-        }
-
-        stage('Run Backend Unit Tests') {
-            steps {
-                echo 'Running backend tests inside .NET container...'
-                sh '''
-                    docker run --rm -v ${WORKSPACE}:/app -w /app \
-                    mcr.microsoft.com/dotnet/sdk:8.0 sh -c '
-                        SLN=$(find . -name "*.sln" | head -n 1)
-                        if [ -z "$SLN" ]; then
-                            echo "ERROR: .sln file not found"
-                            exit 1
-                        fi
-                        echo "Using solution: $SLN"
-                        dotnet test "$SLN"
-                    '
-                '''
-            }
-        }
-
-        stage('Run Frontend Tests') {
-            steps {
-                echo 'Running Frontend tests inside Node.js container...'
-                sh '''
-                    docker run --rm -v ${WORKSPACE}:/app -w /app node:18 sh -c '
-                        PKG=$(find . -name package.json -not -path "*/node_modules/*" \
-                              \\( -ipath "*front*" -o -ipath "*client*" \\) | head -n 1)
-                        if [ -z "$PKG" ]; then
-                            echo "ERROR: frontend package.json not found"
-                            exit 1
-                        fi
-                        DIR=$(dirname "$PKG")
-                        echo "Using frontend dir: $DIR"
-                        cd "$DIR"
-                        npm ci
-                        npm test -- --watchAll=false --passWithNoTests
-                    '
-                '''
+        stage('Run Tests') {
+            parallel {
+                stage('Backend Unit Tests') {
+                    steps {
+                        echo 'Running .NET Unit Tests...'
+                        sh """
+                            docker run --rm -v ${WORKSPACE}:/app -w /app \
+                              ${DOTNET_IMAGE} dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
+                        """
+                    }
+                }
+                stage('Frontend Unit Tests') {
+                    steps {
+                        echo 'Running Frontend Unit Tests...'
+                        sh """
+                            docker run --rm -v ${WORKSPACE}:/app -w /app/apps/frontend \
+                              ${NODE_IMAGE} npm test -- --watchAll=false --passWithNoTests
+                        """
+                    }
+                }
             }
         }
 
         stage('Deploy via Ansible') {
             steps {
-                echo "Deploying Streetcode application for target user: ${params.TARGET_USER}"
-                sh "ansible-playbook -i inventory site.yml -e 'target_user=${params.TARGET_USER}'"
+                echo "Deploying Streetcode application for target user: ${env.DEPLOY_TARGET_USER}"
+                withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        ansible-playbook -i inventory/jenkins.yml site.yml --tags app \
+                          --private-key "$SSH_KEY" -e "target_user=${env.DEPLOY_TARGET_USER}"
+                    """
+                }
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                echo 'Verifying deployment accessibility...'
+                sh '''
+                    curl -fsS --retry 10 --retry-delay 3 http://host.docker.internal:3000/ > /dev/null && echo "✅ Frontend is accessible on port 3000!"
+                '''
             }
         }
     }
 
     post {
+        always {
+            sh 'chown -R $(id -u):$(id -g) ${WORKSPACE} || true'
+        }
         success {
-            echo "✅ All tests passed and application deployed successfully!"
+            echo '✅ Pipeline finished successfully: Tests passed and application deployed!'
         }
         failure {
-            echo "❌ Tests or deployment failed."
+            echo '❌ Pipeline failed.'
         }
     }
 }
