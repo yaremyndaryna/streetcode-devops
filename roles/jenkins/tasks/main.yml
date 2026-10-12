@@ -6,17 +6,23 @@
     mode: '0700'
   become: false
 
-- name: Generate SSH key for Jenkins deployment
-  community.crypto.openssh_keypair:
-    path: "/home/{{ target_user }}/.ssh/jenkins_deploy"
-    type: ed25519
-    comment: jenkins-deploy
+- name: Generate SSH key for Jenkins deployment via ssh-keygen
+  command: >
+    ssh-keygen -t ed25519 -N "" -f "/home/{{ target_user }}/.ssh/jenkins_deploy" -C "jenkins-deploy"
+  args:
+    creates: "/home/{{ target_user }}/.ssh/jenkins_deploy"
   become: false
 
 - name: Authorize SSH key for deploy user
-  ansible.posix.authorized_key:
-    user: "{{ target_user }}"
-    key: "{{ lookup('file', '/home/' ~ target_user ~ '/.ssh/jenkins_deploy.pub') }}"
+  shell: >
+    grep -qfs "$(cat /home/{{ target_user }}/.ssh/jenkins_deploy.pub)" /home/{{ target_user }}/.ssh/authorized_keys || \
+    cat /home/{{ target_user }}/.ssh/jenkins_deploy.pub >> /home/{{ target_user }}/.ssh/authorized_keys
+  become: false
+
+- name: Ensure correct permissions on authorized_keys
+  file:
+    path: "/home/{{ target_user }}/.ssh/authorized_keys"
+    mode: '0600'
   become: false
 
 - name: Create Jenkins directories
