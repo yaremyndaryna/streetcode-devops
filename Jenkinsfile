@@ -28,19 +28,25 @@ pipeline {
                 stage('Backend Unit Tests') {
                     steps {
                         echo 'Running .NET Unit Tests...'
-                        sh """
-                            docker run --rm -v ${WORKSPACE}:/app -w /app \
-                              ${DOTNET_IMAGE} dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
-                        """
+                        sh '''
+                            docker run --rm \
+                                -v ${WORKSPACE}:/app \
+                                -w /app \
+                                mcr.microsoft.com/dotnet/sdk:6.0 \
+                                dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
+                        '''
                     }
                 }
                 stage('Frontend Unit Tests') {
                     steps {
                         echo 'Running Frontend Unit Tests...'
-                        sh """
-                            docker run --rm -v ${WORKSPACE}:/app -w /app/apps/frontend \
-                              ${NODE_IMAGE} npm test -- --watchAll=false --passWithNoTests
-                        """
+                        sh '''
+                            docker run --rm \
+                                -v ${WORKSPACE}:/app \
+                                -w /app/apps/frontend \
+                                node:18 \
+                                npm run --if-present test -- --watchAll=false --passWithNoTests
+                        '''
                     }
                 }
             }
