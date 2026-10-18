@@ -1,44 +1,53 @@
-# streetcode-devops
-# 🐳 Docker Deployment — Streetcode DevOps
+# Load Balancing 
 
-This branch contains the setup for containerizing and running the **Streetcode** project (Frontend, Backend, and MS SQL Database) using **Docker** and **Docker Compose**.
-
----
-
-## 🏗 Architecture & Services
-
-The application consists of three main services connected within a shared Docker bridge network:
-
-| Service | Container Name | Technology | Host Port | Container Port |
-| :--- | :--- | :--- | :--- | :--- |
-| **Database** | `streetcode-db` | MS SQL Server 2022 | `1433` | `1433` |
-| **Backend** | `streetcode-backend` | .NET 6 / ASP.NET Web API | `5000` | `5000` |
-| **Frontend** | `streetcode-frontend` | React + Nginx | `3000` | `80` |
+This branch introduces an Nginx-based Load Balancing architecture for the Streetcode web application. It distributes incoming HTTP requests across multiple frontend application replicas using the Round-Robin algorithm, ensuring traffic distribution and failover capabilities.
 
 ---
 
-## ⚙️ Prerequisites
+## Architecture Overview
 
-Before starting, ensure that your virtual machine or local system has:
-* **Git** installed
-* **Docker Engine** (>= 20.10)
-* **Docker Compose** (>= v2.0)
-* Free host ports: `1433`, `5000`, `3000`
+Before this setup, the frontend container was exposed directly to the host system. With the Load Balancer integrated, the infrastructure transitions to a reverse-proxy model:
 
----
-
-## 🚀 Step-by-Step Installation & Run Guide
-
-### Step 1: Clone the Repository
-
-Clone the project repository and switch to the `docker` branch:
-
-```bash
-git clone https://github.com/yaremyndaryna/streetcode-devops.git streetcode-devops
-cd streetcode-devops
-git checkout docker
 ```
-### Step 2: Configure Environment Variables
+                  +-----------------------------------+
+                  |        Client / Browser           |
+                  +-----------------------------------+
+                                    |
+                                    | Port 3000
+                                    v
+                  +-----------------------------------+
+                  |    streetcode-lb (Nginx Proxy)    |
+                  +-----------------------------------+
+                               /         \
+                 (Round-Robin) /           \ (Round-Robin)
+                              v             v
+       +-------------------------+       +-------------------------+
+       |  streetcode-app-1       |       |  streetcode-app-2       |
+       |  (Frontend Replica 1)   |       |  (Frontend Replica 2)   |
+       +-------------------------+       +-------------------------+
+                               \           /
+                                v         v
+                   +----------------------------------+
+                   | streetcode-backend (.NET Core)   |
+                   +----------------------------------+
+                                    |
+                                    v
+                   +----------------------------------+
+                   |  streetcode-db (MS SQL Server)   |
+                   +----------------------------------+
+```
+
+### Key Changes
+* **Isolation of Replicas:** Frontend containers (`streetcode-app-1`, `streetcode-app-2`) no longer publish host ports directly. They communicate strictly within the internal Docker network.
+* **Single Entrypoint:** Nginx (`streetcode-lb`) is the sole service listening on port `3000` to receive public traffic.
+* **Redundancy:** Traffic is dynamically distributed between both instances. If one instance fails, Nginx routes all incoming requests to the surviving instance seamlessly.
+
+
+---
+
+
+## How to Run and Verify Locally
+### Step 1: Configure Environment Variables
 
 Create a `.env` file in the root directory of the project to set the database credentials, ports, and the address of the machine where the project runs:
 
@@ -56,70 +65,114 @@ API_URL=http://${HOST_IP}:5000/api
 > - To find the IP of the machine, run: `hostname -I`
 > - If you open the site on the same machine where Docker runs, you can use `localhost` instead of the IP (`HOST_IP=localhost`, `API_URL=http://localhost:5000/api`).
 
-#### What each variable does
+### Step 2: Start the Docker Stack
 
-| Variable | Description |
-|---|---|
-| `MS_SQL_DB_PORT` | Port on which SQL Server is exposed on the host |
-| `SA_PASSWORD` | SQL Server `sa` password (must meet SQL Server complexity rules) |
-| `DB_USER` | Database user (use `sa` on a fresh container) |
-| `DB_NAME` | Database name, created automatically by migrations |
-| `HOST_IP` | IP address of the machine, used by the backend for CORS (`http://HOST_IP:3000`) |
-| `API_URL` | Backend address that the **browser** uses; it is built into the frontend at build time |
-
-> **Note:** the API address is baked into the frontend during `docker compose build`.
-> If the IP changes, update `.env` and rebuild the frontend:
-> ```bash
-> docker compose up -d --build frontend
-> docker compose up -d backend
-> ```
-## Step 3: Build and Run with Docker Compose
-
-Build the images and start all services in detached mode (`-d`):
+Clean up any legacy containers and run the environment:
 
 ```bash
-docker compose up --build -d
+docker compose down
+docker compose up -d --build
 ```
 
-## Step 4: Verify Running Containers
+### Step 2: Check Container Status
 
-Check if all three containers are in the `Up` or `healthy` state:
+Ensure all 5 containers are running properly:
 
 ```bash
 docker compose ps
 ```
-## 🌐 Application Access
 
-Once all services are running, you can access them via your browser:
+Expected output includes:
+* `streetcode-db`
+* `streetcode-backend`
+* `streetcode-app-1`
+* `streetcode-app-2`
+* `streetcode-lb`
 
-- **Frontend App:** [http://localhost:3000](http://localhost:3000)
-  or `http://<YOUR_VM_IP>:3000`
+### Step 3: Verify Load Balancing (Round-Robin)
 
-- **Backend API (Swagger):** [http://localhost:5000/swagger/index.html](http://localhost:5000/swagger/index.html)
-  or `http://<YOUR_VM_IP>:5000/swagger/index.html`
-
-## 🧹 Maintenance Commands
-
-View live logs for all services:
+1. Open two terminal windows to watch logs for both application replicas:
 
 ```bash
-docker compose logs -f
+# Terminal 1
+docker logs -f streetcode-app-1
+
+# Terminal 2
+docker logs -f streetcode-app-2
 ```
 
-Restart a specific service (e.g., backend):
+2. Perform requests using `curl`:
 
 ```bash
-docker compose restart backend
+curl -i http://localhost:3000/
+curl -i http://localhost:3000/
 ```
 
-Stop running services:
+*Observation:* The first request will log in `streetcode-app-1`, and the second request will log in `streetcode-app-2`.
 
+### Step 4: Test Failover Capability
+
+1. Stop the first instance:
 ```bash
-docker compose down
+docker stop streetcode-app-1
 ```
 
-Completely stop and remove containers, networks, and volumes:
+2. Send requests to the site:
+```bash
+curl -i http://localhost:3000/
+```
+
+*Observation:* Nginx automatically detects the offline instance and serves responses through `streetcode-app-2` without downtime.
+
+3. Restart the instance:
+```bash
+docker start streetcode-app-1
+```
+---
+
+## Testing Alternative Load-Balancing Algorithms
+
+By default, Nginx distributes incoming traffic using the standard **Round-Robin** algorithm. You can test other distribution strategies by updating the `upstream` block in your `lb/nginx.conf` file:
+
+---
+
+### 1. Weighted Round-Robin
+Directs more traffic to higher-capacity servers.
+
+```nginx
+upstream streetcode_app {
+    server streetcode-app-1:80 weight=3; # Receives ~75% of traffic
+    server streetcode-app-2:80 weight=1; # Receives ~25% of traffic
+}
+
+```
+
+* **How to test:** Send 8 requests via browser or `curl`. You will see `streetcode-app-1` handling 3 out of every 4 requests in `docker logs`.
+
+---
+
+### 2. IP Hash (`ip_hash`)
+
+Ensures requests from the same client IP address are consistently routed to the same backend container (sticky sessions).
+
+```nginx
+upstream streetcode_app {
+    ip_hash;
+    server streetcode-app-1:80;
+    server streetcode-app-2:80;
+}
+
+```
+
+* **How to test:** Refresh the browser multiple times. All incoming requests from your IP will land exclusively on one container (e.g., `streetcode-app-1`).
+
+---
+
+### 🔄 Applying Algorithm Changes
+
+After editing `lb/nginx.conf`, restart the Nginx load balancer to apply the new settings:
 
 ```bash
-docker compose down -v --remove-orphans
+docker compose restart nginx-lb
+
 ```
