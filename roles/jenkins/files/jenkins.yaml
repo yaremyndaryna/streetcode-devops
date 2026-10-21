@@ -38,4 +38,7 @@ jobs:
             scriptPath('Jenkinsfile')
           }
         }
+        triggers {
+          githubPush()
+        }
       }
