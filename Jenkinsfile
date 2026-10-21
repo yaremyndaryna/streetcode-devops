@@ -19,34 +19,53 @@ pipeline {
     environment {
         DEPLOY_TARGET_USER = "${params.TARGET_USER}"
         NODE_IMAGE         = 'node:18'
-        DOTNET_IMAGE       = 'mcr.microsoft.com/dotnet/sdk:8.0'
+        DOTNET_IMAGE       = 'mcr.microsoft.com/dotnet/sdk:6.0'
     }
 
     stages {
+        stage('Check SonarCloud Status') {
+            steps {
+                script {
+                    echo "Checking SonarCloud analysis status for commit: ${env.GIT_COMMIT}..."
+                    
+                    def response = sh(
+                        script: "curl -s -H 'Accept: application/vnd.github+json' https://api.github.com/repos/yaremyndaryna/streetcode-devops/commits/${env.GIT_COMMIT}/check-runs",
+                        returnStdout: true
+                    )
+
+                    if (!response.contains('"conclusion": "success"')) {
+                        error("❌ SonarCloud analysis failed, is still running, or has not passed yet! Aborting Jenkins deployment.")
+                    } else {
+                        echo "✅ SonarCloud status verified successfully. Proceeding with tests and deployment..."
+                    }
+                }
+            }
+        }
+
         stage('Run Tests') {
             parallel {
                 stage('Backend Unit Tests') {
                     steps {
                         echo 'Running .NET Unit Tests...'
-                        sh '''
+                        sh """
                             docker run --rm \
-                                -v ${WORKSPACE}:/app \
+                                -v \${WORKSPACE}:/app \
                                 -w /app \
-                                mcr.microsoft.com/dotnet/sdk:6.0 \
+                                ${env.DOTNET_IMAGE} \
                                 dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
-                        '''
+                        """
                     }
                 }
                 stage('Frontend Unit Tests') {
                     steps {
                         echo 'Running Frontend Unit Tests...'
-                        sh '''
+                        sh """
                             docker run --rm \
-                                -v ${WORKSPACE}:/app \
+                                -v \${WORKSPACE}:/app \
                                 -w /app/apps/frontend \
-                                node:18 \
+                                ${env.NODE_IMAGE} \
                                 npm run --if-present test -- --watchAll=false --passWithNoTests
-                        '''
+                        """
                     }
                 }
             }
