@@ -1,5 +1,5 @@
 app_repo: "https://github.com/yaremyndaryna/streetcode-devops.git"
-app_branch: "docker"
+app_branch: "load-balancer"
 
 app_dir: "/home/{{ target_user }}/streetcode-app"
 
