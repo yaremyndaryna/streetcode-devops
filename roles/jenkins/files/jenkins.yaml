@@ -17,7 +17,7 @@ credentials:
       - credentials:
           - basicSSHUserPrivateKey:
               scope: GLOBAL
-              id: deploy-ssh
+              id: "deploy-ssh"
               username: ${DEPLOY_USER}
               description: "SSH Key for Ansible Host Deployment"
               privateKeySource:
