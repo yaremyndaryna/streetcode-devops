@@ -31,14 +31,16 @@ jobs:
           cpsScm {
             scm {
               git {
-                remote { url('${REPO_URL}') }
-                branches('*/${REPO_BRANCH}')
+                remote { 
+                  url(System.getenv('REPO_URL')) 
+                }
+                branch('*/' + System.getenv('REPO_BRANCH'))
               }
             }
             scriptPath('Jenkinsfile')
           }
         }
         triggers {
-          pollSCM('H/2 * * * *')
+          scm('H/2 * * * *')
         }
       }

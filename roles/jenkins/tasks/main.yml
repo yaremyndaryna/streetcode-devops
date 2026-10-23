@@ -40,7 +40,7 @@
     dest: "{{ jenkins_dir }}/{{ item }}"
     mode: '0644'
   loop: [Dockerfile, plugins.txt, jenkins.yaml]
-
+  
 - name: Render docker-compose for Jenkins
   template:
     src: docker-compose.jenkins.yml.j2
