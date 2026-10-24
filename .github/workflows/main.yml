@@ -51,19 +51,19 @@ jobs:
         run: |
           dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
 
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+
       - name: Snyk Security Scan (.NET Backend)
-        uses: snyk/actions/dotnet@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          args: --file=apps/backend/Streetcode/Streetcode.WebApi/Streetcode.WebApi.csproj
+        run: |
+          snyk test --file=apps/backend/Streetcode/Streetcode.sln
 
       - name: Snyk Security Scan (Frontend Dependencies)
-        uses: snyk/actions/node@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
+        run: |
+          snyk test --file=apps/frontend/package.json
