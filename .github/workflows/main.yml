@@ -25,6 +25,11 @@ jobs:
         with:
           dotnet-version: '6.0.x'
 
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
       - name: Install SonarScanner for .NET
         run: |
           dotnet tool install --global dotnet-sonarscanner
@@ -51,6 +56,11 @@ jobs:
         run: |
           dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
 
+      - name: Install Frontend Dependencies
+        run: |
+          cd apps/frontend
+          npm ci || npm install
+
       - name: Setup Snyk CLI
         uses: snyk/actions/setup@master
 
@@ -59,11 +69,11 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test --file=apps/backend/Streetcode/Streetcode.sln
+          snyk test --file=apps/backend/Streetcode/Streetcode.sln --severity-threshold=high
 
       - name: Snyk Security Scan (Frontend Dependencies)
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test --file=apps/frontend/package.json
+          snyk test --file=apps/frontend/package.json --severity-threshold=high
