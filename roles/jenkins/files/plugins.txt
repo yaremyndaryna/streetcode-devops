@@ -6,3 +6,4 @@ credentials
 credentials-binding
 ssh-credentials
 timestamper
+matrix-auth

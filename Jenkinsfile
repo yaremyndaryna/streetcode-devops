@@ -73,7 +73,7 @@ pipeline {
 
         stage('Security Scan (Trivy)') {
             steps {
-                sh '''
+                sh """
                     echo "Running Trivy vulnerability scan on Docker images..."
                     
                     docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
@@ -81,33 +81,33 @@ pipeline {
                         
                     docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
                         aquasec/trivy:latest image --severity HIGH,CRITICAL streetcode-app-streetcode-app-1:latest || true
-                '''
+                """
             }
         }
 
         stage('Push Artifacts to GHCR') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    sh '''
+                    sh """
                         echo "Logging in to GitHub Container Registry..."
-                        echo $GH_TOKEN | docker login ghcr.io -u $GH_USER --password-stdin
+                        echo \$GH_TOKEN | docker login ghcr.io -u \$GH_USER --password-stdin
 
                         echo "Tagging and pushing Backend image..."
-                        docker tag streetcode-app-backend:latest ghcr.io/${GH_USER}/streetcode-backend:${env.BUILD_NUMBER}
-                        docker tag streetcode-app-backend:latest ghcr.io/${GH_USER}/streetcode-backend:latest
-                        docker push ghcr.io/${GH_USER}/streetcode-backend:${env.BUILD_NUMBER}
-                        docker push ghcr.io/${GH_USER}/streetcode-backend:latest
+                        docker tag streetcode-app-backend:latest ghcr.io/\$GH_USER/streetcode-backend:${env.BUILD_NUMBER}
+                        docker tag streetcode-app-backend:latest ghcr.io/\$GH_USER/streetcode-backend:latest
+                        docker push ghcr.io/\$GH_USER/streetcode-backend:${env.BUILD_NUMBER}
+                        docker push ghcr.io/\$GH_USER/streetcode-backend:latest
 
                         echo "Tagging and pushing Frontend image..."
-                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/${GH_USER}/streetcode-frontend:${env.BUILD_NUMBER}
-                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/${GH_USER}/streetcode-frontend:latest
-                        docker push ghcr.io/${GH_USER}/streetcode-frontend:${env.BUILD_NUMBER}
-                        docker push ghcr.io/${GH_USER}/streetcode-frontend:latest
-                    '''
+                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
+                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/\$GH_USER/streetcode-frontend:latest
+                        docker push ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
+                        docker push ghcr.io/\$GH_USER/streetcode-frontend:latest
+                    """
                 }
             }
         }
-
+        
         stage('Deploy via Ansible') {
             steps {
                 echo "Deploying Streetcode application for target user: ${env.DEPLOY_TARGET_USER}"
