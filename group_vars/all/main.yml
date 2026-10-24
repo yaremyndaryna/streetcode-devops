@@ -11,3 +11,5 @@ target_user: "ubuntu"
 
 jenkins_repo_url: "https://github.com/yaremyndaryna/streetcode-devops.git"
 jenkins_repo_branch: "jenkins"
+
+github_user: "yaremyndaryna"

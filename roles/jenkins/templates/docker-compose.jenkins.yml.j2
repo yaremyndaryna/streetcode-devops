@@ -8,6 +8,8 @@ services:
     ports:
       - "8080:8080"
     environment:
+      GITHUB_USER: "{{github_user}}"
+      GITHUB_TOKEN: "{{github_token}}"
       JENKINS_ADMIN_PASSWORD: "{{ jenkins_admin_password }}"
       DEPLOY_USER: "{{ target_user }}"
       REPO_URL: "{{ jenkins_repo_url }}"
