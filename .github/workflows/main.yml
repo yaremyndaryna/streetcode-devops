@@ -1,4 +1,4 @@
-name: SonarCloud Code Analysis
+name: SonarCloud Code Analysis & Snyk Security
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-and-analyze:
-    name: Build and Analyze via SonarCloud
+    name: Build, Analyze & Security Scan
     runs-on: ubuntu-latest
 
     steps:
@@ -50,3 +50,20 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Snyk Security Scan (.NET Backend)
+        uses: snyk/actions/dotnet@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --file=apps/backend/Streetcode/Streetcode.WebApi/Streetcode.WebApi.csproj
+
+      - name: Snyk Security Scan (Frontend Dependencies)
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
