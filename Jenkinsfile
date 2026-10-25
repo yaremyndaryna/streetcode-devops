@@ -119,6 +119,24 @@ pipeline {
                 }
             }
         }
+        
+        stage('Verify Monitoring Status') {
+            steps {
+                script {
+                    echo 'Checking if Monitoring stack is live...'
+                    
+                    sh '''
+                        echo "Waiting for Prometheus..."
+                        curl -fsS --retry 10 --retry-delay 3 http://localhost:9090/-/healthy || (echo "❌ Prometheus health check failed!" && exit 1)
+                        
+                        echo "Waiting for Grafana..."
+                        curl -fsS --retry 10 --retry-delay 3 http://localhost:3001/api/health || (echo "❌ Grafana health check failed!" && exit 1)
+                    '''
+                    
+                    echo '✅ All monitoring services are fully healthy!'
+                }
+            }
+        }
 
         stage('Smoke Test') {
             steps {
