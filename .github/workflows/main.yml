@@ -88,7 +88,7 @@ jobs:
         run: |
           docker build -t streetcode-backend:test \
             -f load-balancer-src/apps/backend/Dockerfile \
-            load-balancer-src
+            load-balancer-src/apps/backend
 
       - name: Trivy Scan (Backend Docker Image)
         uses: aquasecurity/trivy-action@master
@@ -104,7 +104,7 @@ jobs:
         run: |
           docker build -t streetcode-frontend:test \
             -f load-balancer-src/apps/frontend/Dockerfile \
-            load-balancer-src
+            load-balancer-src/apps/frontend
 
       - name: Trivy Scan (Frontend Docker Image)
         uses: aquasecurity/trivy-action@master
