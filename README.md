@@ -186,7 +186,7 @@ ansible-playbook -i inventory/bootstrap.yml site.yml
 To deploy or update only the application stack:
 
 ```bash
-ansible-playbook -i inventory/jenkins.yml site.yml --tags app -e target_user=<YOUR_USERNAME>
+ansible-playbook -i inventory/jenkins.yml site.yml -e target_user=<YOUR_USERNAME>
 ```
 
 ---
