@@ -1,4 +1,4 @@
-name: SonarCloud Code Analysis & Snyk Security
+name: SonarCloud Code Analysis, Snyk & Trivy Security
 
 on:
   push:
@@ -77,3 +77,37 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           snyk test --file=apps/frontend/package.json --severity-threshold=high
+
+      - name: Checkout load-balancer branch for Dockerfiles
+        uses: actions/checkout@v3
+        with:
+          ref: load-balancer
+          path: load-balancer-src
+
+      - name: Build Backend Docker Image for Scan
+        run: |
+          docker build -t streetcode-backend:test -f load-balancer-src/apps/backend/Streetcode/Dockerfile load-balancer-src
+
+      - name: Trivy Scan (Backend Docker Image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'streetcode-backend:test'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Build Frontend Docker Image for Scan
+        run: |
+          docker build -t streetcode-frontend:test -f load-balancer-src/apps/frontend/Dockerfile load-balancer-src
+
+      - name: Trivy Scan (Frontend Frontend Image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'streetcode-frontend:test'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'

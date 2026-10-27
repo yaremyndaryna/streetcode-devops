@@ -26,7 +26,7 @@ pipeline {
         stage('Check GitHub Security & Quality Status') {
             steps {
                 script {
-                    echo "Checking GitHub Actions (SonarCloud & Snyk) status for commit: ${env.GIT_COMMIT}..."
+                    echo "Checking GitHub Actions (SonarCloud, Snyk & Trivy) status for commit: ${env.GIT_COMMIT}..."
                     
                     def response = sh(
                         script: "curl -s -H 'Accept: application/vnd.github+json' https://api.github.com/repos/yaremyndaryna/streetcode-devops/commits/${env.GIT_COMMIT}/check-runs",
@@ -34,7 +34,7 @@ pipeline {
                     )
 
                     if (!response.contains('"conclusion": "success"')) {
-                        error("❌ GitHub CI/CD checks (SonarCloud/Snyk) failed, are still running, or have not passed yet! Aborting Jenkins deployment.")
+                        error("❌ GitHub CI/CD checks (SonarCloud/Snyk/Trivy) failed, are still running, or have not passed yet! Aborting Jenkins deployment.")
                     } else {
                         echo "✅ All GitHub CI checks verified successfully. Proceeding with tests and deployment..."
                     }
@@ -71,27 +71,15 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Deploy via Ansible') {
             steps {
-                echo 'Building Docker images for Backend and Frontend...'
-                sh '''
-                    docker build -t streetcode-app-backend:latest -f apps/backend/Dockerfile .
-                    docker build -t streetcode-app-frontend:latest -f apps/frontend/Dockerfile .
-                '''
-            }
-        }
-
-        stage('Security Scan (Trivy)') {
-            steps {
-                sh """
-                    echo "Running Trivy vulnerability scan on Docker images..."
-                    
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                        aquasec/trivy:latest image --severity HIGH,CRITICAL streetcode-app-backend:latest || true
-                        
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                        aquasec/trivy:latest image --severity HIGH,CRITICAL streetcode-app-frontend:latest || true
-                """
+                echo "Deploying Streetcode application for target user: ${env.DEPLOY_TARGET_USER}"
+                withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        ansible-playbook -i inventory/jenkins.yml site.yml --tags app \
+                          --private-key "$SSH_KEY" -e "target_user=${env.DEPLOY_TARGET_USER}"
+                    """
+                }
             }
         }
 
@@ -109,27 +97,15 @@ pipeline {
                         docker push ghcr.io/\$GH_USER/streetcode-backend:latest
 
                         echo "Tagging and pushing Frontend image..."
-                        docker tag streetcode-app-frontend:latest ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
-                        docker tag streetcode-app-frontend:latest ghcr.io/\$GH_USER/streetcode-frontend:latest
+                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
+                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/\$GH_USER/streetcode-frontend:latest
                         docker push ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
                         docker push ghcr.io/\$GH_USER/streetcode-frontend:latest
                     """
                 }
             }
         }
-        
-        stage('Deploy via Ansible') {
-            steps {
-                echo "Deploying Streetcode application for target user: ${env.DEPLOY_TARGET_USER}"
-                withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh', keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        ansible-playbook -i inventory/jenkins.yml site.yml --tags app \
-                          --private-key "$SSH_KEY" -e "target_user=${env.DEPLOY_TARGET_USER}"
-                    """
-                }
-            }
-        }
-        
+
         stage('Verify Monitoring Status') {
             steps {
                 script {
@@ -163,7 +139,7 @@ pipeline {
             sh 'chown -R $(id -u):$(id -g) ${WORKSPACE} || true'
         }
         success {
-            echo '✅ Pipeline finished successfully: Tests passed, images scanned, artifacts pushed, and application deployed!'
+            echo '✅ Pipeline finished successfully: Tests passed, application deployed via Ansible, and artifacts pushed to GHCR!'
         }
         failure {
             echo '❌ Pipeline failed.'
