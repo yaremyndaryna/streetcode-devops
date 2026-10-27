@@ -86,7 +86,9 @@ jobs:
 
       - name: Build Backend Docker Image for Scan
         run: |
-          docker build -t streetcode-backend:test -f load-balancer-src/apps/backend/Streetcode/Dockerfile load-balancer-src
+          docker build -t streetcode-backend:test \
+            -f load-balancer-src/apps/backend/Dockerfile \
+            load-balancer-src
 
       - name: Trivy Scan (Backend Docker Image)
         uses: aquasecurity/trivy-action@master
@@ -100,9 +102,11 @@ jobs:
 
       - name: Build Frontend Docker Image for Scan
         run: |
-          docker build -t streetcode-frontend:test -f load-balancer-src/apps/frontend/Dockerfile load-balancer-src
+          docker build -t streetcode-frontend:test \
+            -f load-balancer-src/apps/frontend/Dockerfile \
+            load-balancer-src
 
-      - name: Trivy Scan (Frontend Frontend Image)
+      - name: Trivy Scan (Frontend Docker Image)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'streetcode-frontend:test'
