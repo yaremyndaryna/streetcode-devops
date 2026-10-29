@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: streetcode-config
+  namespace: streetcode
+data:
+  DB_NAME: "Streetcode"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
