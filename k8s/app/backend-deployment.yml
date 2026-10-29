@@ -13,9 +13,11 @@ spec:
       labels:
         app: backend
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: backend
-          image: ghcr.io/streetcode/backend:latest
+          image: ghcr.io/yaremyndaryna/streetcode-backend:latest
           env:
             - name: ConnectionStrings__DefaultConnection
               valueFrom:

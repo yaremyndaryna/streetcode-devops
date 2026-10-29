@@ -13,9 +13,11 @@ spec:
       labels:
         app: frontend
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: frontend
-          image: ghcr.io/streetcode/frontend:latest
+          image: ghcr.io/yaremyndaryna/streetcode-frontend:latest
           ports:
             - containerPort: 80
 ---
