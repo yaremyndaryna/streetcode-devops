@@ -1,3 +1,4 @@
+---
 - name: Ensure keyrings directory exists
   ansible.builtin.file:
     path: /etc/apt/keyrings
@@ -37,8 +38,26 @@
     state: present
     update_cache: yes
 
+- name: Ensure Docker group exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+
+- name: Add target user to docker group
+  ansible.builtin.user:
+    name: "{{ target_user | default('ubuntu') }}"
+    groups: docker
+    append: yes
+
+- name: Ensure docker.socket is unmasked, enabled, and started
+  ansible.builtin.systemd:
+    name: docker.socket
+    masked: no
+    enabled: yes
+    state: started
+
 - name: Ensure Docker service is running
   ansible.builtin.systemd:
-    name: docker
+    name: docker.service
     state: started
     enabled: yes
