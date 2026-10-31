@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "Streetcode CI/CD (Configured as Code)"
+  systemMessage: "Streetcode CI/CD (Configured as Code for K3s)"
   numExecutors: 2
   securityRealm:
     local:
@@ -15,15 +15,6 @@ credentials:
   system:
     domainCredentials:
       - credentials:
-          - basicSSHUserPrivateKey:
-              scope: GLOBAL
-              id: "deploy-ssh"
-              username: ${DEPLOY_USER}
-              description: "SSH Key for Ansible Host Deployment"
-              privateKeySource:
-                directEntry:
-                  privateKey: "${readFile:/run/secrets/deploy_ssh_key}"
-
           - usernamePassword:
               scope: GLOBAL
               id: "github-credentials"

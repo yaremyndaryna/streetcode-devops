@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: streetcode
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: backend
+        image: ghcr.io/yaremyndaryna/streetcode-backend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: streetcode-secrets
+              key: CONNECTION_STRING
+        - name: RedisConfiguration__ConnectionString
+          valueFrom:
+            configMapKeyRef:
+              name: streetcode-config
+              key: REDIS_URL

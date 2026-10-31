@@ -1,46 +1,23 @@
 ---
-- name: Ensure ~/.ssh exists
-  file:
-    path: "/home/{{ target_user }}/.ssh"
-    state: directory
-    mode: '0700'
-  become: false
-
-- name: Generate SSH key for Jenkins deployment via ssh-keygen
-  command: >
-    ssh-keygen -t ed25519 -N "" -f "/home/{{ target_user }}/.ssh/jenkins_deploy" -C "jenkins-deploy"
-  args:
-    creates: "/home/{{ target_user }}/.ssh/jenkins_deploy"
-  become: false
-
-- name: Authorize SSH key for deploy user
-  shell: >
-    grep -qfs "$(cat /home/{{ target_user }}/.ssh/jenkins_deploy.pub)" /home/{{ target_user }}/.ssh/authorized_keys || \
-    cat /home/{{ target_user }}/.ssh/jenkins_deploy.pub >> /home/{{ target_user }}/.ssh/authorized_keys
-  become: false
-
-- name: Ensure correct permissions on authorized_keys
-  file:
-    path: "/home/{{ target_user }}/.ssh/authorized_keys"
-    mode: '0600'
-  become: false
-
-- name: Create Jenkins directories
+- name: Ensure Jenkins directories exist
   file:
     path: "{{ item }}"
     state: directory
-    mode: '0777'
+    mode: '0755'
   loop:
     - "{{ jenkins_dir }}"
     - "{{ jenkins_home }}"
 
-- name: Copy Jenkins files
+- name: Copy Jenkins setup files
   copy:
     src: "{{ item }}"
     dest: "{{ jenkins_dir }}/{{ item }}"
     mode: '0644'
-  loop: [Dockerfile, plugins.txt, jenkins.yaml]
-  
+  loop:
+    - Dockerfile
+    - plugins.txt
+    - jenkins.yaml
+
 - name: Render docker-compose for Jenkins
   template:
     src: docker-compose.jenkins.yml.j2

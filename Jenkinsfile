@@ -5,7 +5,7 @@ pipeline {
         string(
             name: 'TARGET_USER', 
             defaultValue: "${env.DEPLOY_USER ?: 'ubuntu'}", 
-            description: 'Target system username for Ansible deployment'
+            description: 'Target system username for deployment'
         )
     }
 
@@ -20,10 +20,19 @@ pipeline {
         DEPLOY_TARGET_USER = "${params.TARGET_USER}"
         NODE_IMAGE         = 'node:18'
         DOTNET_IMAGE       = 'mcr.microsoft.com/dotnet/sdk:6.0'
+        
+        REGISTRY           = 'ghcr.io'
+        CREDENTIALS_ID     = 'github-credentials' 
+        
+        IMAGE_BACKEND      = "ghcr.io/yaremyndaryna/streetcode-backend"
+        IMAGE_FRONTEND     = "ghcr.io/yaremyndaryna/streetcode-frontend"
+        
+        KUBECONFIG_PATH    = '/etc/rancher/k3s/k3s.yaml'
+        APP_URL            = 'http://localhost'
     }
 
     stages {
-        stage('Check GitHub Security & Quality Status') {
+        stage('Check GitHub Security Status') {
             steps {
                 script {
                     echo "Checking GitHub Actions (SonarCloud, Snyk & Trivy) status for commit: ${env.GIT_COMMIT}..."
@@ -34,15 +43,15 @@ pipeline {
                     )
 
                     if (!response.contains('"conclusion": "success"')) {
-                        error("❌ GitHub CI/CD checks (SonarCloud/Snyk/Trivy) failed, are still running, or have not passed yet! Aborting Jenkins deployment.")
+                        error("❌ GitHub CI/CD security checks failed or are pending! Aborting deployment.")
                     } else {
-                        echo "✅ All GitHub CI checks verified successfully. Proceeding with tests and deployment..."
+                        echo "✅ Security checks passed successfully."
                     }
                 }
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Unit Tests') {
             parallel {
                 stage('Backend Unit Tests') {
                     steps {
@@ -71,65 +80,86 @@ pipeline {
             }
         }
 
-        stage('Deploy via Ansible') {
+        stage('Build Docker Images') {
             steps {
-                echo "Deploying Streetcode application for target user: ${env.DEPLOY_TARGET_USER}"
-                withCredentials([sshUserPrivateKey(credentialsId: 'deploy-ssh', keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        ansible-playbook -i inventory/jenkins.yml site.yml --tags app \
-                          --private-key "$SSH_KEY" -e "target_user=${env.DEPLOY_TARGET_USER}"
-                    """
+                script {
+                    echo "Building Docker Images..."
+                    sh "docker build -t ${IMAGE_BACKEND}:${env.BUILD_NUMBER} ./apps/backend"
+                    sh "docker build -t ${IMAGE_FRONTEND}:${env.BUILD_NUMBER} ./apps/frontend"
+                    
+                    sh "docker tag ${IMAGE_BACKEND}:${env.BUILD_NUMBER} ${IMAGE_BACKEND}:latest"
+                    sh "docker tag ${IMAGE_FRONTEND}:${env.BUILD_NUMBER} ${IMAGE_FRONTEND}:latest"
                 }
             }
         }
 
         stage('Push Artifacts to GHCR') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: env.CREDENTIALS_ID, usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                     sh """
                         echo "Logging in to GitHub Container Registry..."
                         echo \$GH_TOKEN | docker login ghcr.io -u \$GH_USER --password-stdin
 
-                        echo "Tagging and pushing Backend image..."
-                        docker tag streetcode-app-backend:latest ghcr.io/\$GH_USER/streetcode-backend:${env.BUILD_NUMBER}
-                        docker tag streetcode-app-backend:latest ghcr.io/\$GH_USER/streetcode-backend:latest
-                        docker push ghcr.io/\$GH_USER/streetcode-backend:${env.BUILD_NUMBER}
-                        docker push ghcr.io/\$GH_USER/streetcode-backend:latest
+                        echo "Pushing Backend images..."
+                        docker push ${IMAGE_BACKEND}:${env.BUILD_NUMBER}
+                        docker push ${IMAGE_BACKEND}:latest
 
-                        echo "Tagging and pushing Frontend image..."
-                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
-                        docker tag streetcode-app-streetcode-app-1:latest ghcr.io/\$GH_USER/streetcode-frontend:latest
-                        docker push ghcr.io/\$GH_USER/streetcode-frontend:${env.BUILD_NUMBER}
-                        docker push ghcr.io/\$GH_USER/streetcode-frontend:latest
+                        echo "Pushing Frontend images..."
+                        docker push ${IMAGE_FRONTEND}:${env.BUILD_NUMBER}
+                        docker push ${IMAGE_FRONTEND}:latest
                     """
                 }
             }
         }
 
-        stage('Verify Monitoring Status') {
+        stage('Deploy to K3s') {
             steps {
                 script {
-                    echo 'Checking if Monitoring stack is live...'
-                    
-                    sh '''
-                        echo "Waiting for Prometheus..."
-                        curl -fsS --retry 10 --retry-delay 3 http://host.docker.internal:9090/-/healthy || (echo "❌ Prometheus health check failed!" && exit 1)
+                    echo "Applying Kubernetes Manifests..."
+                    sh """
+                        export KUBECONFIG=${env.KUBECONFIG_PATH}
                         
-                        echo "Waiting for Grafana..."
-                        curl -fsS --retry 10 --retry-delay 3 http://host.docker.internal:3001/api/health || (echo "❌ Grafana health check failed!" && exit 1)
-                    '''
-                    
-                    echo '✅ All monitoring services are fully healthy!'
+                        kubectl apply -f k8s/app/namespace.yaml
+                        kubectl apply -f k8s/app/secrets.yaml
+                        kubectl apply -f k8s/app/configmap.yaml
+                        kubectl apply -f k8s/app/
+
+                        kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${env.BUILD_NUMBER} -n streetcode
+                        kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${env.BUILD_NUMBER} -n streetcode
+                    """
+                }
+            }
+        }
+
+        stage('Verify Rollout Status') {
+            steps {
+                script {
+                    echo "Checking Deployment Rollout..."
+                    sh """
+                        export KUBECONFIG=${env.KUBECONFIG_PATH}
+                        
+                        kubectl rollout status deployment/backend -n streetcode --timeout=120s
+                        kubectl rollout status deployment/frontend -n streetcode --timeout=120s
+                        
+                        kubectl get pods -n streetcode
+                    """
                 }
             }
         }
 
         stage('Smoke Test') {
             steps {
-                echo 'Verifying deployment accessibility...'
-                sh '''
-                    curl -fsS --retry 10 --retry-delay 3 http://host.docker.internal:3000/ > /dev/null && echo "✅ Frontend is accessible on port 3000!"
-                '''
+                script {
+                    echo 'Verifying application accessibility via Traefik Ingress...'
+                    sh """
+                        sleep 5
+                        echo "1. Checking Frontend access..."
+                        curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/ > /dev/null && echo "✅ Frontend is live!"
+
+                        echo "2. Checking Backend API access..."
+                        curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/api > /dev/null && echo "✅ Backend API is live!"
+                    """
+                }
             }
         }
     }
@@ -137,12 +167,13 @@ pipeline {
     post {
         always {
             sh 'chown -R $(id -u):$(id -g) ${WORKSPACE} || true'
+            sh 'docker logout ghcr.io || true'
         }
         success {
-            echo '✅ Pipeline finished successfully: Tests passed, application deployed via Ansible, and artifacts pushed to GHCR!'
+            echo '✅ Pipeline succeeded: Infrastructure verified, Images pushed, K3s deployed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed.'
+            echo '❌ Pipeline failed!'
         }
     }
 }

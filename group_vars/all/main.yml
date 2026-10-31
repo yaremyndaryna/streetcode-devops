@@ -1,15 +1,6 @@
-app_repo: "https://github.com/yaremyndaryna/streetcode-devops.git"
-app_branch: "load-balancer"
-
-app_dir: "/home/{{ target_user }}/streetcode-app"
-
-db_port: 1433
-db_user: "sa"
-db_name: "StreetcodeDb"
-
 target_user: "ubuntu"
 
 jenkins_repo_url: "https://github.com/yaremyndaryna/streetcode-devops.git"
-jenkins_repo_branch: "jenkins"
+jenkins_repo_branch: "cloud"
 
 github_user: "yaremyndaryna"

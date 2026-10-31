@@ -1,9 +1,14 @@
 ---
-- name: Deploy Streetcode WebApp & Jenkins CI/CD
-  hosts: webservers
-  become: yes
+- name: Prepare base OS & Kubernetes infrastructure
+  hosts: all
+  become: true
   roles:
-    - { role: common, tags: ['common'] }
-    - { role: docker, tags: ['docker'] }
-    - { role: streetcode_app, tags: ['app'] }
-    - { role: jenkins, tags: ['jenkins'] }
+    - common
+    - docker
+    - k3s
+
+- name: Setup Jenkins CI/CD Server
+  hosts: jenkins
+  become: true
+  roles:
+    - jenkins
