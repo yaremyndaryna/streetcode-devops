@@ -6,6 +6,7 @@ on:
       - main
       - jenkins
       - load-balancer
+      - cloud
   pull_request:
     types: [opened, synchronize, reopened]
 
