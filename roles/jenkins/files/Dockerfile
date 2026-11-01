@@ -18,6 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN groupadd -f docker && usermod -aG docker jenkins
 
+ARG KUBECTL_VERSION=v1.36.5
+RUN curl -fsSLo /usr/local/bin/kubectl \
+      "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/$(dpkg --print-architecture)/kubectl" \
+ && chmod +x /usr/local/bin/kubectl
+
 USER jenkins
 
 COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt

@@ -16,8 +16,10 @@ pipeline {
         IMAGE_BACKEND   = 'ghcr.io/yaremyndaryna/streetcode-backend'
         IMAGE_FRONTEND  = 'ghcr.io/yaremyndaryna/streetcode-frontend'
 
-        KUBECONFIG_PATH = '/etc/rancher/k3s/k3s.yaml'
-        APP_URL         = 'http://localhost'
+        KUBECONFIG_SRC  = '/etc/rancher/k3s/k3s.yaml'
+        KUBECONFIG_PATH = '/var/jenkins_home/k3s.yaml'
+        K3S_API         = 'https://host.docker.internal:6443'
+        APP_URL         = 'http://host.docker.internal'
     }
 
     stages {
@@ -109,6 +111,18 @@ fi
             }
         }
 
+        stage('Prepare Kubeconfig') {
+            steps {
+                sh '''
+                    cp "$KUBECONFIG_SRC" "$KUBECONFIG_PATH"
+                    chmod 600 "$KUBECONFIG_PATH"
+                    kubectl --kubeconfig "$KUBECONFIG_PATH" config set-cluster default \
+                        --server="$K3S_API" --tls-server-name=kubernetes
+                    kubectl --kubeconfig "$KUBECONFIG_PATH" get nodes
+                '''
+            }
+        }
+
         stage('Deploy to K3s') {
             steps {
                 script {
@@ -116,9 +130,9 @@ fi
                     sh """
                         export KUBECONFIG=${env.KUBECONFIG_PATH}
 
-                        kubectl apply -f k8s/app/namespace.yaml
-                        kubectl apply -f k8s/app/secrets.yaml
-                        kubectl apply -f k8s/app/configmap.yaml
+                        kubectl apply -f k8s/app/namespace.yml
+                        kubectl apply -f k8s/app/secrets.yml
+                        kubectl apply -f k8s/app/configmap.yml
                         kubectl apply -f k8s/app/
 
                         kubectl set image deployment/backend  backend=${env.IMAGE_BACKEND}:${env.IMAGE_TAG}  -n streetcode
