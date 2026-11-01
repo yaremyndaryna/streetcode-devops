@@ -131,7 +131,6 @@ fi
                         export KUBECONFIG=${env.KUBECONFIG_PATH}
 
                         kubectl apply -f k8s/app/namespace.yml
-                        kubectl apply -f k8s/app/secret.yml
                         kubectl apply -f k8s/app/configmap.yml
                         kubectl apply -f k8s/app/
 
