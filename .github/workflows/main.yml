@@ -1,4 +1,4 @@
-name: SonarCloud Code Analysis, Snyk & Trivy Security
+name: SonarCloud Code Analysis & Snyk Security
 
 on:
   push:
@@ -17,17 +17,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '6.0.x'
 
       - name: Setup Node.js Environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
@@ -63,7 +63,7 @@ jobs:
           npm ci || npm install
 
       - name: Setup Snyk CLI
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@master  
 
       - name: Snyk Security Scan (.NET Backend)
         continue-on-error: true
@@ -79,40 +79,3 @@ jobs:
         run: |
           snyk test --file=apps/frontend/package.json --severity-threshold=high
 
-      - name: Checkout load-balancer branch for Dockerfiles
-        uses: actions/checkout@v3
-        with:
-          ref: load-balancer
-          path: load-balancer-src
-
-      - name: Build Backend Docker Image for Scan
-        run: |
-          docker build -t streetcode-backend:test \
-            -f load-balancer-src/apps/backend/Dockerfile \
-            load-balancer-src/apps/backend
-
-      - name: Trivy Scan (Backend Docker Image)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'streetcode-backend:test'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'HIGH,CRITICAL'
-
-      - name: Build Frontend Docker Image for Scan
-        run: |
-          docker build -t streetcode-frontend:test \
-            -f load-balancer-src/apps/frontend/Dockerfile \
-            load-balancer-src/apps/frontend
-
-      - name: Trivy Scan (Frontend Docker Image)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'streetcode-frontend:test'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'HIGH,CRITICAL'
