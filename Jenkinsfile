@@ -1,17 +1,3 @@
-@NonCPS
-def parseChecks(String json) {
-    def data = new groovy.json.JsonSlurperClassic().parseText(json)
-    def runs = data.check_runs ?: []
-    return [
-        total  : runs.size(),
-        names  : runs.collect { it.name.toLowerCase() },
-        pending: runs.findAll { it.status != 'completed' }.collect { it.name },
-        failed : runs.findAll {
-            it.status == 'completed' && !(it.conclusion in ['success', 'neutral', 'skipped'])
-        }.collect { it.name }
-    ]
-}
-
 pipeline {
     agent any
 
@@ -41,23 +27,40 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: env.CREDENTIALS_ID, usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                     script {
                         env.IMAGE_TAG = env.GIT_COMMIT
-                        def required = ['build, analyze & security scan', 'build, push & trivy scan']
+                        def required = ['Build, Analyze & Security Scan', 'Build, Push & Trivy Scan']
 
                         echo "Waiting for GitHub checks on commit ${env.GIT_COMMIT}..."
                         waitUntil(initialRecurrencePeriod: 15000) {
-                            def json = sh(
-                                returnStdout: true,
-                                script: 'curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/yaremyndaryna/streetcode-devops/commits/$GIT_COMMIT/check-runs?per_page=100"'
-                            )
-                            if (!json?.trim()) { return false }
-
-                            def r = parseChecks(json)
-                            if (r.failed) {
-                                error("❌ GitHub checks failed: ${r.failed.join(', ')}")
+                            def failed  = []
+                            def waiting = []
+                            for (name in required) {
+                                def state = ''
+                                withEnv(["CHECK_NAME=${name}"]) {
+                                    state = sh(returnStdout: true, script: '''#!/bin/sh
+RESP=$(curl -s -G -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" --data-urlencode "check_name=$CHECK_NAME" --data-urlencode "filter=latest" "https://api.github.com/repos/yaremyndaryna/streetcode-devops/commits/$GIT_COMMIT/check-runs")
+if echo "$RESP" | grep -q '"total_count": 0'; then
+  echo missing
+elif echo "$RESP" | grep -q '"status": "completed"'; then
+  if echo "$RESP" | grep -Eq '"conclusion": "(success|neutral|skipped)"'; then echo success; else echo failed; fi
+elif echo "$RESP" | grep -q '"total_count"'; then
+  echo pending
+else
+  echo api_error
+fi
+''').trim()
+                                }
+                                echo "${name}: ${state}"
+                                if (state == 'failed') {
+                                    failed << name
+                                } else if (state != 'success') {
+                                    waiting << name
+                                }
                             }
-                            def missing = required.findAll { k -> !r.names.any { it.contains(k) } }
-                            if (r.pending || missing) {
-                                echo "⏳ Pending: ${r.pending}, not started yet: ${missing}"
+                            if (failed) {
+                                error("❌ GitHub checks failed: ${failed}")
+                            }
+                            if (waiting) {
+                                echo "⏳ Still waiting for: ${waiting}"
                                 return false
                             }
                             return true
