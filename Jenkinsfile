@@ -81,12 +81,9 @@ pipeline {
         }
 
         stage('Build Docker Images') {
-            environment {
-                DOCKER_BUILDKIT = '1'
-            }
             steps {
                 script {
-                    echo "Building Docker images with BuildKit enabled..."
+                    echo "Building Docker Images..."
                     sh "docker build -t ${IMAGE_BACKEND}:${env.BUILD_NUMBER} ./apps/backend"
                     sh "docker build -t ${IMAGE_FRONTEND}:${env.BUILD_NUMBER} ./apps/frontend"
                     
