@@ -67,7 +67,7 @@ fi
                             }
                             return true
                         }
-                        echo '✅ All required GitHub checks completed successfully (scans executed, images built and pushed).'
+                        echo '✅ All required GitHub checks completed successfully.'
                     }
                 }
             }
@@ -126,17 +126,15 @@ fi
         stage('Deploy to K3s') {
             steps {
                 script {
-                    echo "Applying Kubernetes manifests, image tag ${env.IMAGE_TAG}..."
-                    sh """
-                        export KUBECONFIG=${env.KUBECONFIG_PATH}
-
+                    sh '''
+                        export KUBECONFIG=/var/jenkins_home/k3s.yaml
+                        
                         kubectl apply -f k8s/app/namespace.yml
-                        kubectl apply -f k8s/app/configmap.yml
                         kubectl apply -f k8s/app/
-
-                        kubectl set image deployment/backend  backend=${env.IMAGE_BACKEND}:${env.IMAGE_TAG}  -n streetcode
-                        kubectl set image deployment/frontend frontend=${env.IMAGE_FRONTEND}:${env.IMAGE_TAG} -n streetcode
-                    """
+                        
+                        kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${IMAGE_TAG} -n streetcode
+                        kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${IMAGE_TAG} -n streetcode
+                    '''
                     env.DEPLOYED = 'true'
                 }
             }
