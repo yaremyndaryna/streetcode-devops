@@ -161,7 +161,7 @@ fi
                     curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/ > /dev/null && echo "✅ Frontend is live!"
 
                     echo "2. Checking Backend API access..."
-                    curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/api > /dev/null && echo "✅ Backend API is live!"
+                    curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/swagger/index.html > /dev/null && echo "✅ Backend API is live!"
                 """
             }
         }
