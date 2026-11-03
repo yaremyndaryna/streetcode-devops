@@ -73,26 +73,26 @@ fi
         stage('Backend Unit Tests') {
             steps {
                 echo 'Running .NET Unit Tests...'
-                sh """
+                sh '''
                     docker run --rm \
-                        -v \${WORKSPACE}:/workspace \
+                        -v "${WORKSPACE}":/workspace \
                         -w /workspace \
-                        ${env.DOTNET_IMAGE} \
-                        sh -c "dotnet test \\\$(find . -name 'Streetcode.XUnitTest.csproj') --configuration Release"
-                """
+                        mcr.microsoft.com/dotnet/sdk:6.0 \
+                        sh -c 'dotnet test $(find . -name "Streetcode.XUnitTest.csproj") --configuration Release'
+                '''
             }
         }
 
         stage('Frontend Unit Tests') {
             steps {
                 echo 'Running Frontend Unit Tests...'
-                sh """
+                sh '''
                     docker run --rm \
-                        -v \${WORKSPACE}:/workspace \
+                        -v "${WORKSPACE}":/workspace \
                         -w /workspace/apps/frontend \
-                        ${env.NODE_IMAGE} \
+                        node:18 \
                         npm run --if-present test -- --watchAll=false --passWithNoTests
-                """
+                '''
             }
         }
 
