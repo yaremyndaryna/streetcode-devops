@@ -16,8 +16,14 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "instance_type" {
-  description = "EC2 instance type eligible for AWS Free Tier."
+variable "app_instance_type" {
+  description = "EC2 instance type for App Node (K3s, x86)."
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "tools_instance_type" {
+  description = "EC2 instance type for Tools Node (Jenkins/Prometheus, x86)."
   type        = string
   default     = "t3.small"
 }
@@ -35,7 +41,7 @@ variable "ssh_allowed_cidr" {
 }
 
 variable "ebs_volume_size" {
-  description = "Size of the root EBS volume in GB."
+  description = "Size of the root EBS volume in GB for each node."
   type        = number
-  default     = 30
+  default     = 20
 }

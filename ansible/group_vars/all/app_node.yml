@@ -1,0 +1,4 @@
+---
+k3s_write_kubeconfig_mode: "644"
+
+node_exporter_port: 9100

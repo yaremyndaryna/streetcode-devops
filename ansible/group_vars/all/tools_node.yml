@@ -1,0 +1,8 @@
+---
+tools_working_dir: "/home/ubuntu/tools"
+
+grafana_admin_password: "admin"
+
+docker_packages:
+  - docker.io
+  - docker-compose

@@ -1,0 +1,101 @@
+---
+- name: Configure App Node
+  hosts: app_node
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+
+    - name: Install Node Exporter for system monitoring
+      apt:
+        name: prometheus-node-exporter
+        state: present
+
+    - name: Ensure Node Exporter service is running
+      systemd:
+        name: prometheus-node-exporter
+        state: started
+        enabled: yes
+
+    - name: Install K3s server
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode {{ k3s_write_kubeconfig_mode }}
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Ensure .kube directory exists for ubuntu user
+      file:
+        path: "/home/{{ system_user }}/.kube"
+        state: directory
+        owner: "{{ system_user }}"
+        group: "{{ system_user }}"
+        mode: '0755'
+
+    - name: Copy k3s.yaml to user's kubeconfig
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "/home/{{ system_user }}/.kube/config"
+        remote_src: yes
+        owner: "{{ system_user }}"
+        group: "{{ system_user }}"
+        mode: '0600'
+
+- name: Configure Tools Node
+  hosts: tools_node
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+
+    - name: Install Docker and Docker Compose
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: "{{ system_user }}"
+        groups: docker
+        append: yes
+
+    - name: Create working directory for tools stack
+      file:
+        path: "{{ tools_working_dir }}"
+        state: directory
+        owner: "{{ system_user }}"
+        group: "{{ system_user }}"
+        mode: '0755'
+
+    - name: Copy docker-compose.yml and prometheus.yml
+      copy:
+        src: "files/{{ item }}"
+        dest: "{{ tools_working_dir }}/{{ item }}"
+        owner: "{{ system_user }}"
+        group: "{{ system_user }}"
+        mode: '0644'
+      loop:
+        - docker-compose.yml
+        - prometheus.yml
+
+    - name: Run Docker Compose tools stack
+      community.docker.docker_compose:
+        project_src: "{{ tools_working_dir }}"
+        state: present

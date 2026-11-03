@@ -13,13 +13,12 @@ pipeline {
         DOTNET_IMAGE    = 'mcr.microsoft.com/dotnet/sdk:6.0'
 
         CREDENTIALS_ID  = 'github-credentials'
+        KUBECONFIG_CRED = 'k3s-kubeconfig'
+
         IMAGE_BACKEND   = 'ghcr.io/yaremyndaryna/streetcode-backend'
         IMAGE_FRONTEND  = 'ghcr.io/yaremyndaryna/streetcode-frontend'
 
-        KUBECONFIG_SRC  = '/etc/rancher/k3s/k3s.yaml'
-        KUBECONFIG_PATH = '/var/jenkins_home/k3s.yaml'
-        K3S_API         = 'https://host.docker.internal:6443'
-        APP_URL         = 'http://host.docker.internal'
+        APP_URL         = 'http://63.184.204.189'
     }
 
     stages {
@@ -111,30 +110,18 @@ fi
             }
         }
 
-        stage('Prepare Kubeconfig') {
-            steps {
-                sh '''
-                    cp "$KUBECONFIG_SRC" "$KUBECONFIG_PATH"
-                    chmod 600 "$KUBECONFIG_PATH"
-                    kubectl --kubeconfig "$KUBECONFIG_PATH" config set-cluster default \
-                        --server="$K3S_API" --tls-server-name=kubernetes
-                    kubectl --kubeconfig "$KUBECONFIG_PATH" get nodes
-                '''
-            }
-        }
-
         stage('Deploy to K3s') {
             steps {
                 script {
-                    sh '''
-                        export KUBECONFIG=/var/jenkins_home/k3s.yaml
-                        
-                        kubectl apply -f k8s/app/namespace.yml
-                        kubectl apply -f k8s/app/
-                        
-                        kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${IMAGE_TAG} -n streetcode
-                        kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${IMAGE_TAG} -n streetcode
-                    '''
+                    withKubeConfig([credentialsId: env.KUBECONFIG_CRED]) {
+                        sh '''
+                            kubectl apply -f k8s/app/namespace.yml
+                            kubectl apply -f k8s/app/
+                            
+                            kubectl set image deployment/backend backend=${IMAGE_BACKEND}:${IMAGE_TAG} -n streetcode
+                            kubectl set image deployment/frontend frontend=${IMAGE_FRONTEND}:${IMAGE_TAG} -n streetcode
+                        '''
+                    }
                     env.DEPLOYED = 'true'
                 }
             }
@@ -142,14 +129,14 @@ fi
 
         stage('Verify Rollout Status') {
             steps {
-                sh """
-                    export KUBECONFIG=${env.KUBECONFIG_PATH}
+                withKubeConfig([credentialsId: env.KUBECONFIG_CRED]) {
+                    sh '''
+                        kubectl rollout status deployment/backend  -n streetcode --timeout=300s
+                        kubectl rollout status deployment/frontend -n streetcode --timeout=300s
 
-                    kubectl rollout status deployment/backend  -n streetcode --timeout=300s
-                    kubectl rollout status deployment/frontend -n streetcode --timeout=300s
-
-                    kubectl get pods -n streetcode
-                """
+                        kubectl get pods -n streetcode
+                    '''
+                }
             }
         }
 
@@ -161,7 +148,7 @@ fi
                     curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/ > /dev/null && echo "✅ Frontend is live!"
 
                     echo "2. Checking Backend API access..."
-                    curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/swagger/index.html > /dev/null && echo "✅ Backend API is live!"
+                    curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/api/streetcode/getAll > /dev/null && echo "✅ Backend API is live!"
                 """
             }
         }
@@ -192,11 +179,12 @@ fi
             script {
                 if (env.DEPLOYED == 'true') {
                     echo 'Rolling back to the previous revision...'
-                    sh '''
-                        export KUBECONFIG=$KUBECONFIG_PATH
-                        kubectl rollout undo deployment/backend  -n streetcode || true
-                        kubectl rollout undo deployment/frontend -n streetcode || true
-                    '''
+                    withKubeConfig([credentialsId: env.KUBECONFIG_CRED]) {
+                        sh '''
+                            kubectl rollout undo deployment/backend  -n streetcode || true
+                            kubectl rollout undo deployment/frontend -n streetcode || true
+                        '''
+                    }
                 }
             }
         }

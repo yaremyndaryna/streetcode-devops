@@ -1,0 +1,5 @@
+---
+system_user: ubuntu
+project_name: streetcode
+
+timezone: "Europe/Kyiv"
