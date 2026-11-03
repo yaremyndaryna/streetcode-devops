@@ -19,8 +19,7 @@ pipeline {
         IMAGE_FRONTEND  = 'ghcr.io/yaremyndaryna/streetcode-frontend'
     }
 
-
-
+    stages {
         stage('Check GitHub Security & Build Status') {
             options { timeout(time: 20, unit: 'MINUTES') }
             steps {
@@ -71,7 +70,7 @@ fi
             }
         }
 
-                stage('Backend Unit Tests') {
+        stage('Backend Unit Tests') {
             steps {
                 echo 'Running .NET Unit Tests...'
                 sh """
@@ -96,7 +95,6 @@ fi
                 """
             }
         }
-
 
         stage('Verify Images in GHCR') {
             steps {
@@ -207,3 +205,4 @@ fi
             }
         }
     }
+}
