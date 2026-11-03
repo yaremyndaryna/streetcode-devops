@@ -75,10 +75,10 @@ fi
                 echo 'Running .NET Unit Tests...'
                 sh """
                     docker run --rm \
-                        -v \$(pwd):/app \
-                        -w /app/apps/backend/Streetcode \
+                        -v \${WORKSPACE}:/workspace \
+                        -w /workspace \
                         ${env.DOTNET_IMAGE} \
-                        dotnet test Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
+                        sh -c "dotnet test \\\$(find . -name 'Streetcode.XUnitTest.csproj') --configuration Release"
                 """
             }
         }
@@ -88,8 +88,8 @@ fi
                 echo 'Running Frontend Unit Tests...'
                 sh """
                     docker run --rm \
-                        -v \$(pwd):/app \
-                        -w /app/apps/frontend \
+                        -v \${WORKSPACE}:/workspace \
+                        -w /workspace/apps/frontend \
                         ${env.NODE_IMAGE} \
                         npm run --if-present test -- --watchAll=false --passWithNoTests
                 """
