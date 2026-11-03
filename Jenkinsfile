@@ -20,6 +20,13 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Source Code') {
+            steps {
+                echo 'Pulling source code from GitHub...'
+                checkout scm
+            }
+        }
+
         stage('Check GitHub Security & Build Status') {
             options { timeout(time: 20, unit: 'MINUTES') }
             steps {
@@ -73,28 +80,29 @@ fi
         stage('Backend Unit Tests') {
             steps {
                 echo 'Running .NET Unit Tests...'
-                sh '''
+                sh """
                     docker run --rm \
-                        -v "${WORKSPACE}":/workspace \
-                        -w /workspace \
-                        mcr.microsoft.com/dotnet/sdk:6.0 \
-                        sh -c 'dotnet test $(find . -name "Streetcode.XUnitTest.csproj") --configuration Release'
-                '''
+                        -v \${WORKSPACE}:/app \
+                        -w /app \
+                        ${env.DOTNET_IMAGE} \
+                        dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
+                """
             }
         }
 
         stage('Frontend Unit Tests') {
             steps {
                 echo 'Running Frontend Unit Tests...'
-                sh '''
+                sh """
                     docker run --rm \
-                        -v "${WORKSPACE}":/workspace \
-                        -w /workspace/apps/frontend \
-                        node:18 \
+                        -v \${WORKSPACE}:/app \
+                        -w /app/apps/frontend \
+                        ${env.NODE_IMAGE} \
                         npm run --if-present test -- --watchAll=false --passWithNoTests
-                '''
+                """
             }
         }
+
 
         stage('Verify Images in GHCR') {
             steps {
