@@ -17,8 +17,6 @@ pipeline {
 
         IMAGE_BACKEND   = 'ghcr.io/yaremyndaryna/streetcode-backend'
         IMAGE_FRONTEND  = 'ghcr.io/yaremyndaryna/streetcode-frontend'
-
-        APP_URL         = 'http://63.184.204.189'
     }
 
     stages {
@@ -77,10 +75,10 @@ fi
                 echo 'Running .NET Unit Tests...'
                 sh """
                     docker run --rm \
-                        -v \${WORKSPACE}:/app \
-                        -w /app \
+                        -v \$(pwd):/app \
+                        -w /app/apps/backend/Streetcode \
                         ${env.DOTNET_IMAGE} \
-                        dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
+                        dotnet test Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
                 """
             }
         }
@@ -90,7 +88,7 @@ fi
                 echo 'Running Frontend Unit Tests...'
                 sh """
                     docker run --rm \
-                        -v \${WORKSPACE}:/app \
+                        -v \$(pwd):/app \
                         -w /app/apps/frontend \
                         ${env.NODE_IMAGE} \
                         npm run --if-present test -- --watchAll=false --passWithNoTests
@@ -142,14 +140,32 @@ fi
 
         stage('Smoke Test') {
             steps {
-                sh """
-                    sleep 5
-                    echo "1. Checking Frontend access..."
-                    curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/ > /dev/null && echo "✅ Frontend is live!"
+                withCredentials([string(credentialsId: 'app-node-ip', variable: 'APP_IP')]) {
+                    sh """
+                        sleep 5
+                        echo "1. Checking Frontend access..."
+                        curl -fsS --retry 10 --retry-delay 3 http://\${APP_IP}/ > /dev/null && echo "✅ Frontend is live!"
 
-                    echo "2. Checking Backend API access..."
-                    curl -fsS --retry 10 --retry-delay 3 ${env.APP_URL}/api/streetcode/getAll > /dev/null && echo "✅ Backend API is live!"
-                """
+                        echo "2. Checking Backend API access..."
+                        curl -fsS --retry 10 --retry-delay 3 http://\${APP_IP}/api/streetcode/getAll > /dev/null && echo "✅ Backend API is live!"
+                    """
+                }
+            }
+        }
+
+        stage('Verify Prometheus Scraping App Node') {
+            steps {
+                withCredentials([string(credentialsId: 'tools-node-ip', variable: 'TOOLS_IP')]) {
+                    sh """
+                        echo "Checking if Prometheus scrapes Node Exporter on App Node..."
+                        STATUS=\$(curl -s "http://\${TOOLS_IP}:9090/api/v1/targets" | grep -o '"health":"up"' | head -n 1)
+                        if [ "\$STATUS" = '"health":"up"' ]; then
+                            echo "✅ Node Exporter target is UP in Prometheus!"
+                        else
+                            echo "⚠️ Warning: Node Exporter target is not UP yet."
+                        fi
+                    """
+                }
             }
         }
 
