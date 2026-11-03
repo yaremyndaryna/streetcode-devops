@@ -19,13 +19,7 @@ pipeline {
         IMAGE_FRONTEND  = 'ghcr.io/yaremyndaryna/streetcode-frontend'
     }
 
-    stages {
-        stage('Checkout Source Code') {
-            steps {
-                echo 'Pulling source code from GitHub...'
-                checkout scm
-            }
-        }
+
 
         stage('Check GitHub Security & Build Status') {
             options { timeout(time: 20, unit: 'MINUTES') }
@@ -77,13 +71,13 @@ fi
             }
         }
 
-        stage('Backend Unit Tests') {
+                stage('Backend Unit Tests') {
             steps {
                 echo 'Running .NET Unit Tests...'
                 sh """
                     docker run --rm \
-                        -v \${WORKSPACE}:/app \
-                        -w /app \
+                        --volumes-from streetcode-jenkins \
+                        -w \${WORKSPACE} \
                         ${env.DOTNET_IMAGE} \
                         dotnet test apps/backend/Streetcode/Streetcode.XUnitTest/Streetcode.XUnitTest.csproj --configuration Release
                 """
@@ -95,8 +89,8 @@ fi
                 echo 'Running Frontend Unit Tests...'
                 sh """
                     docker run --rm \
-                        -v \${WORKSPACE}:/app \
-                        -w /app/apps/frontend \
+                        --volumes-from streetcode-jenkins \
+                        -w \${WORKSPACE}/apps/frontend \
                         ${env.NODE_IMAGE} \
                         npm run --if-present test -- --watchAll=false --passWithNoTests
                 """
