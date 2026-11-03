@@ -1,4 +1,5 @@
 using Hangfire;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Streetcode.BLL.Services.BlobStorageService;
 using Streetcode.WebApi.Extensions;
 using Streetcode.WebApi.Utils;
@@ -13,6 +14,29 @@ builder.Services.ConfigureBlob(builder);
 builder.Services.ConfigurePayment(builder);
 builder.Services.ConfigureInstagram(builder);
 builder.Services.ConfigureSerilog(builder);
+
+string redisHost = builder.Configuration["REDIS_HOST"] ?? "redis";
+string redisPort = builder.Configuration["REDIS_PORT"] ?? "6379";
+string redisPassword = builder.Configuration["REDIS_PASSWORD"];
+
+string connectionString = string.IsNullOrEmpty(redisPassword)
+    ? $"{redisHost}:{redisPort}"
+    : $"{redisHost}:{redisPort},password={redisPassword}";
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = connectionString;
+    options.InstanceName = "Streetcode_";
+});
+
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.Name = ".Streetcode.Session";
+});
+
 var app = builder.Build();
 
 if (app.Environment.EnvironmentName == "Local")
@@ -30,6 +54,7 @@ await app.ApplyMigrations();
 // await app.SeedDataAsync(); // uncomment for seeding data in local
 app.UseCors();
 app.UseHttpsRedirection();
+app.UseSession();
 app.UseRouting();
 
 app.UseAuthentication();

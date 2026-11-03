@@ -20,14 +20,14 @@ spec:
         image: ghcr.io/yaremyndaryna/streetcode-backend:latest
         ports:
         - containerPort: 5000
-        env:
+                env:
         - name: ASPNETCORE_URLS
           value: "http://+:5000"
-        - name: ConnectionStrings__DefaultConnection
+        - name: STREETCODE_ConnectionStrings__DefaultConnection
           valueFrom:
             secretKeyRef:
               name: streetcode-secrets
-              key: CONNECTION_STRING
+              key: DB_CONNECTION_STRING  
         - name: RedisConfiguration__ConnectionString
           valueFrom:
             configMapKeyRef:
