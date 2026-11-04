@@ -19,4 +19,4 @@ spec:
       - name: frontend
         image: ghcr.io/yaremyndaryna/streetcode-frontend:latest
         ports:
-        - containerPort: 3000
+        - containerPort: 80
