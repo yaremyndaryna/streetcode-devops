@@ -25,6 +25,8 @@ spec:
         ports:
         - containerPort: 5000
         env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Local"
         - name: ASPNETCORE_URLS
           value: "http://+:5000"
         - name: ConnectionStrings__DefaultConnection
