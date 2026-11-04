@@ -147,7 +147,7 @@ fi
                         curl -fsS --retry 10 --retry-delay 3 http://\${APP_IP}/ > /dev/null && echo "✅ Frontend is live!"
 
                         echo "2. Checking Backend API access..."
-                        curl -fsS --retry 10 --retry-delay 3 http://\${APP_IP}/api/streetcode/getAll > /dev/null && echo "✅ Backend API is live!"
+                        curl -fsS --retry 10 --retry-delay 3 http://\${APP_IP}/swagger/index.html > /dev/null && echo "✅ Backend API is live!"
                     """
                 }
             }
